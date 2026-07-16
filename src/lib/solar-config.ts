@@ -84,7 +84,10 @@ export async function generatePlan(input: PlanInput): Promise<PlanResult> {
     try {
       const res = await fetch(WEBHOOK_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true",
+        },
         body: JSON.stringify(input),
       });
       if (res.ok) {
