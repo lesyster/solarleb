@@ -14,7 +14,90 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      contact_messages: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          message: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          message: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          message?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      plans: {
+        Row: {
+          city: string
+          created_at: string
+          estimated_cost_high: number | null
+          estimated_cost_low: number | null
+          estimated_savings: number | null
+          explanation_text: string | null
+          generator_hours: number
+          id: string
+          is_locked: boolean
+          locked_until: string | null
+          monthly_bill: number
+          monthly_kwh: number | null
+          payback_period: string | null
+          property_type: string
+          recommended_battery: string | null
+          recommended_system_kw: number | null
+          user_id: string | null
+        }
+        Insert: {
+          city: string
+          created_at?: string
+          estimated_cost_high?: number | null
+          estimated_cost_low?: number | null
+          estimated_savings?: number | null
+          explanation_text?: string | null
+          generator_hours: number
+          id?: string
+          is_locked?: boolean
+          locked_until?: string | null
+          monthly_bill: number
+          monthly_kwh?: number | null
+          payback_period?: string | null
+          property_type: string
+          recommended_battery?: string | null
+          recommended_system_kw?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          estimated_cost_high?: number | null
+          estimated_cost_low?: number | null
+          estimated_savings?: number | null
+          explanation_text?: string | null
+          generator_hours?: number
+          id?: string
+          is_locked?: boolean
+          locked_until?: string | null
+          monthly_bill?: number
+          monthly_kwh?: number | null
+          payback_period?: string | null
+          property_type?: string
+          recommended_battery?: string | null
+          recommended_system_kw?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
