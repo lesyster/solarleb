@@ -6,7 +6,7 @@
 // If empty or the request fails, a local heuristic fallback is used so the
 // app still works end-to-end during development.
 // ============================================================================
-export const WEBHOOK_URL = "";
+export const WEBHOOK_URL = "https://stout-mandate-estrogen.ngrok-free.dev/webhook/SolarLeb";
 
 export type PlanInput = {
   city: string;
