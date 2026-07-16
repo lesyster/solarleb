@@ -85,6 +85,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: "AI-powered solar planning for Lebanese homes and businesses. Get a free custom recommendation and lock in today's panel prices." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "SolarLeb — Reliable solar power for Lebanon" },
+      { name: "twitter:description", content: "AI-powered solar planning for Lebanese homes and businesses. Get a free custom recommendation and lock in today's panel prices." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a4e3703a-d220-4567-9be0-388518a39120/id-preview-66dcfa43--dbe32468-dec4-4c70-bb55-b17f75274da8.lovable.app-1784228031635.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a4e3703a-d220-4567-9be0-388518a39120/id-preview-66dcfa43--dbe32468-dec4-4c70-bb55-b17f75274da8.lovable.app-1784228031635.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
