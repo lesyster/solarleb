@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Sun, Lock, ArrowLeft } from "lucide-react";
 import { SiteNav, SiteFooter } from "@/components/site-nav";
 import { Button } from "@/components/ui/button";
-import { ARTICLES, getArticle, type Article } from "@/lib/news-articles";
+import { ARTICLES, type Article } from "@/lib/news-articles";
 import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/news")({
@@ -108,5 +108,3 @@ function ArticleView({ article, user, onBack }: { article: Article; user: boolea
     </div>
   );
 }
-
-export { getArticle };
