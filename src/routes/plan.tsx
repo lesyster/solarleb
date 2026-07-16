@@ -71,31 +71,14 @@ function PlanPage() {
       };
 
       const plan = await generatePlan(input);
+      // TODO: Fix RLS policies, then re-enable database save
+// For now, just generate the plan and display results without saving
+setResult(plan);
+setPlanId("temp-" + Date.now().toString()); // Fake ID for UI
+// const { data, error } = await supabase
+//   .from("plans")
+//   .insert({ ... })
 
-      const { data, error } = await supabase
-        .from("plans")
-        .insert({
-          user_id: user?.id ?? null,
-          city: input.city,
-          monthly_bill: input.monthly_bill,
-          generator_hours: input.generator_hours,
-          property_type: input.property_type,
-          monthly_kwh: input.monthly_kwh,
-          recommended_system_kw: plan.recommended_system_kw,
-          recommended_battery: plan.recommended_battery,
-          estimated_cost_low: plan.estimated_cost_low,
-          estimated_cost_high: plan.estimated_cost_high,
-          estimated_savings: plan.estimated_savings,
-          payback_period: plan.payback_period,
-          explanation_text: plan.explanation_text,
-        })
-        .select("id")
-        .single();
-
-      if (error) throw error;
-
-      setResult(plan);
-      setPlanId(data.id);
       toast.success("Your solar plan is ready");
     } catch (err) {
       console.error(err);
