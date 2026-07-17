@@ -39,7 +39,7 @@ export const ARTICLES: Article[] = [
       "Simple monthly habits can preserve 8-12% of your annual generation. A short field guide from installers working across Bekaa and the coast.",
     date: "February 10, 2026",
     category: "Maintenance",
-    imageUrl: "https://images.unsplash.com/photo-1592833167665-ebf40c6f9d75",
+    imageUrl: "https://images.unsplash.com/photo-1700529289398-dd313f11c9cc",
     body:
       "Panels in Lebanon face two enduring enemies: fine Saharan dust that settles after every khamaseen, and sustained summer roof temperatures that push cells past their optimal operating window.\n\nDust management is the higher-impact of the two. A single monthly rinse with soft water (avoid pressure washers, which can damage anti-reflective coatings) recovers most lost output. In coastal areas, salt buildup adds a second layer of grime that responds well to a diluted vinegar wipe on the frames every quarter.\n\nHeat is trickier. Panels lose roughly 0.4% output per degree above 25°C cell temperature, and rooftop cells routinely hit 65°C in July. Ensuring at least 10 cm of airflow clearance behind panels — a common installation shortcut that gets skipped — recovers 3-5% of summer generation. If you're commissioning a new system, insist on this in your contract.\n\nFinally: keep an eye on your inverter's error log via the mobile app. A single string underperforming by 15% or more usually indicates a shaded panel, a loose MC4 connector, or an early cell defect worth addressing before warranty windows close.",
   },
@@ -50,7 +50,7 @@ export const ARTICLES: Article[] = [
       "Thirty-two households in Baakline pooled resources to install a community solar co-op that now covers 70% of their combined load — and cut generator noise in half.",
     date: "January 22, 2026",
     category: "Community",
-    imageUrl: "https://images.unsplash.com/photo-1622227443448-3712f33f2cca",
+    imageUrl: "https://images.unsplash.com/photo-1771479755134-9c1e3143c110",
     body:
       "In the village of Baakline in the Chouf district, a group of thirty-two households did what individual budgets couldn't: they collectively financed an 80 kW rooftop-and-ground-mount installation with 200 kWh of shared battery storage, run as a small cooperative.\n\nThe project, coordinated by a returning engineer and funded through a mix of household contributions and a soft loan from a Lebanese diaspora fund, went live in October 2025. Six months in, it delivers roughly 70% of the co-op's combined electricity demand and has reduced diesel generator runtime from 8-10 hours daily to under 3.\n\nBeyond the numbers, residents describe a quieter village. Generator noise — the constant background of Lebanese nights for the past five years — has noticeably faded on the streets participating in the co-op. Neighbouring villages are now studying the model.\n\nCommunity solar remains legally ambiguous in Lebanon, but the Baakline structure — a private cooperative with individual metering behind a shared inverter cluster — appears to be defensible under existing electricity regulations. Several other villages in the Chouf, Metn, and North have reached out about replicating it.",
   },
