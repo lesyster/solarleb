@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Sun, Lock, ArrowLeft } from "lucide-react";
+import { Lock, ArrowLeft } from "lucide-react";
+
 import { SiteNav, SiteFooter } from "@/components/site-nav";
 import { Button } from "@/components/ui/button";
 import { ARTICLES, type Article } from "@/lib/news-articles";
