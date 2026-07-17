@@ -82,19 +82,26 @@ function localEstimate(input: PlanInput): PlanResult {
 export async function generatePlan(input: PlanInput): Promise<PlanResult> {
   if (WEBHOOK_URL) {
     try {
-      const res = await fetch(WEBHOOK_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "ngrok-skip-browser-warning": "true",
-        },
-        body: JSON.stringify(input),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && typeof data.recommended_system_kw === "number") {
-          return data as PlanResult;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      try {
+        const res = await fetch(WEBHOOK_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "ngrok-skip-browser-warning": "true",
+          },
+          body: JSON.stringify(input),
+          signal: controller.signal,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && typeof data.recommended_system_kw === "number") {
+            return data as PlanResult;
+          }
         }
+      } finally {
+        clearTimeout(timeoutId);
       }
     } catch (err) {
       console.warn("[SolarLeb] webhook failed, using local estimate", err);
