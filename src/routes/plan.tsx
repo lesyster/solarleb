@@ -277,16 +277,21 @@ function PlanPage() {
                 <Button
                   size="lg"
                   onClick={handleLockIn}
-                  className="gradient-sun text-deep font-semibold shadow-glow hover:opacity-90"
+                  disabled={!planId}
+                  className="gradient-sun text-deep font-semibold shadow-glow hover:opacity-90 disabled:opacity-50"
                 >
                   <Lock className="mr-2 h-4 w-4" /> Lock In This Price — $25
                 </Button>
               </div>
-              {!user && (
+              {!planId ? (
                 <p className="mt-4 rounded-lg bg-secondary/60 px-4 py-3 text-sm text-muted-foreground">
-                  You'll need to <Link to="/auth" className="font-semibold text-foreground underline">sign in or create an account</Link> to save this plan before locking in the price.
+                  <Link to="/auth" className="font-semibold text-foreground underline">Sign in</Link> to save and lock in this plan.
                 </p>
-              )}
+              ) : !user ? (
+                <p className="mt-4 rounded-lg bg-secondary/60 px-4 py-3 text-sm text-muted-foreground">
+                  You'll need to <Link to="/auth" className="font-semibold text-foreground underline">sign in or create an account</Link> to lock in the price.
+                </p>
+              ) : null}
             </div>
           </div>
         )}
