@@ -42,11 +42,14 @@ function NewsPage() {
               key={a.slug}
               className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-card transition-all hover:-translate-y-1 hover:shadow-glow"
             >
-              <div className="relative aspect-[16/9] gradient-hero">
-                <div className="absolute inset-0 flex items-center justify-center opacity-40">
-                  <Sun className="h-20 w-20 text-accent" strokeWidth={1.2} />
-                </div>
-                <span className="absolute left-4 top-4 rounded-full bg-white/90 px-2.5 py-0.5 text-xs font-medium text-deep">
+              <div className="relative aspect-[16/9] overflow-hidden">
+                <img
+                  src={a.imageUrl}
+                  alt={a.title}
+                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  loading="lazy"
+                />
+                <span className="absolute left-4 top-4 z-10 rounded-full bg-white/90 px-2.5 py-0.5 text-xs font-medium text-deep shadow-sm">
                   {a.category}
                 </span>
               </div>
