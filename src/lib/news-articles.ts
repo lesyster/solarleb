@@ -5,7 +5,9 @@ export type Article = {
   date: string;
   category: string;
   body: string;
+  imageUrl: string;
 };
+
 
 export const ARTICLES: Article[] = [
   {
