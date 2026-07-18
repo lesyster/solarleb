@@ -141,16 +141,18 @@ export function PlanWalkthrough() {
     update();
     const raf = requestAnimationFrame(update);
     const interval = window.setInterval(update, 100);
-    const stop = window.setTimeout(() => window.clearInterval(interval), 800);
-
+    const stopTimer = window.setTimeout(() => window.clearInterval(interval), 800);
 
     window.addEventListener("resize", update);
     window.addEventListener("scroll", update, true);
     return () => {
       cancelAnimationFrame(raf);
+      window.clearInterval(interval);
+      window.clearTimeout(stopTimer);
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
     };
+
   }, [visible, current.targetField]);
 
   async function dismiss() {
