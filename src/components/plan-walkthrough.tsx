@@ -167,12 +167,13 @@ export function PlanWalkthrough() {
   const bubbleStyle: React.CSSProperties | undefined = useMemo(() => {
     if (!isDesktop || !anchor) return undefined;
     return {
-      position: "absolute",
+      position: "fixed",
       top: anchor.top + anchor.height + 12,
       left: Math.max(16, Math.min(anchor.left, window.innerWidth - 380)),
       maxWidth: 340,
     };
   }, [isDesktop, anchor]);
+
 
   if (checking || !visible) return null;
 
