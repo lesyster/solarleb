@@ -320,11 +320,6 @@ function PlanPage() {
                 <StatCard
                   icon={DollarSign}
                   label="Est. installation cost"
-              <div className="mt-10 grid gap-4 md:grid-cols-2">
-                <StatCard icon={Battery} label="Battery capacity" value={result.recommended_battery} />
-                <StatCard
-                  icon={DollarSign}
-                  label="Est. installation cost"
                   value={`$${result.estimated_cost_low.toLocaleString()} – $${result.estimated_cost_high.toLocaleString()}`}
                 />
                 <StatCard
