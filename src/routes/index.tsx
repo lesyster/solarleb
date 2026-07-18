@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Sun, Zap, ShieldCheck, ArrowRight, TrendingDown } from "lucide-react";
+import { Sun, ArrowRight } from "lucide-react";
 import { SiteNav, SiteFooter } from "@/components/site-nav";
 import { Button } from "@/components/ui/button";
+import { HeroIllustration } from "@/components/hero-illustration";
+import { SolarPanelSparkIcon, LockPriceIcon, SunMountainIcon } from "@/components/brand-icons";
 import { ARTICLES } from "@/lib/news-articles";
 
 export const Route = createFileRoute("/")({
@@ -18,6 +20,7 @@ function Home() {
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 gradient-hero" />
         <div className="absolute -right-32 -top-32 h-96 w-96 rounded-full gradient-sun opacity-40 blur-3xl" />
+        <HeroIllustration />
         <div className="relative mx-auto max-w-6xl px-4 py-24 md:py-32">
           <div className="max-w-3xl">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-white/90 backdrop-blur">
@@ -50,16 +53,16 @@ function Home() {
       </section>
 
       {/* Value props */}
-      <section className="mx-auto max-w-6xl px-4 py-16">
+      <section className="mx-auto max-w-6xl px-4 py-16" data-reveal>
         <div className="grid gap-6 md:grid-cols-3">
           {[
-            { icon: Zap, title: "AI-designed system", body: "Answer 5 quick questions and get a tailored panel + battery recommendation in seconds." },
-            { icon: TrendingDown, title: "Price lock guarantee", body: "A $25 deposit locks in today's panel and battery prices for 30 days — fully credited to your install." },
-            { icon: ShieldCheck, title: "Built for Lebanon", body: "Sized for 40°C summers, dust, and long generator hours — not generic templates from abroad." },
+            { Icon: SolarPanelSparkIcon, title: "AI-designed system", body: "Answer 5 quick questions and get a tailored panel + battery recommendation in seconds." },
+            { Icon: LockPriceIcon, title: "Price lock guarantee", body: "A $25 deposit locks in today's panel and battery prices for 30 days — fully credited to your install." },
+            { Icon: SunMountainIcon, title: "Built for Lebanon", body: "Sized for 40°C summers, dust, and long generator hours — not generic templates from abroad." },
           ].map((f) => (
             <div key={f.title} className="rounded-2xl border border-border bg-card p-6 shadow-card">
               <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl gradient-sun">
-                <f.icon className="h-5 w-5 text-deep" strokeWidth={2.5} />
+                <f.Icon className="h-6 w-6 text-deep" />
               </div>
               <h3 className="font-display text-lg font-semibold text-foreground">{f.title}</h3>
               <p className="mt-2 text-sm text-muted-foreground">{f.body}</p>
@@ -68,8 +71,11 @@ function Home() {
         </div>
       </section>
 
+
+
+
       {/* News preview */}
-      <section className="mx-auto max-w-6xl px-4 py-16">
+      <section className="mx-auto max-w-6xl px-4 py-16" data-reveal>
         <div className="mb-8 flex items-end justify-between">
           <div>
             <h2 className="font-display text-3xl font-bold text-foreground md:text-4xl">Latest news</h2>
@@ -86,10 +92,13 @@ function Home() {
               to="/news"
               className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-card transition-all hover:-translate-y-1 hover:shadow-glow"
             >
-              <div className="aspect-video gradient-hero relative">
-                <div className="absolute inset-0 flex items-center justify-center opacity-40">
-                  <Sun className="h-16 w-16 text-accent" strokeWidth={1.5} />
-                </div>
+              <div className="relative aspect-video overflow-hidden">
+                <img
+                  src={a.imageUrl}
+                  alt={a.title}
+                  className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  loading="lazy"
+                />
                 <span className="absolute left-3 top-3 rounded-full bg-white/90 px-2.5 py-0.5 text-xs font-medium text-deep">
                   {a.category}
                 </span>
@@ -107,7 +116,7 @@ function Home() {
       </section>
 
       {/* CTA */}
-      <section className="mx-auto max-w-6xl px-4 pb-16">
+      <section className="mx-auto max-w-6xl px-4 pb-16" data-reveal>
         <div className="overflow-hidden rounded-3xl bg-deep p-10 text-center shadow-glow md:p-16">
           <h2 className="font-display text-3xl font-bold text-deep-foreground md:text-4xl">
             Ready to see your solar plan?

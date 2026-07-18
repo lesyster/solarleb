@@ -65,7 +65,7 @@ function ContactPage() {
           <p className="mt-3 text-muted-foreground">Questions about installation, pricing, or partnerships? We're here.</p>
         </div>
 
-        <div className="grid gap-8 md:grid-cols-[1fr_2fr]">
+        <div className="grid gap-8 md:grid-cols-[1fr_2fr]" data-reveal>
           <div className="space-y-6">
             <div className="rounded-2xl border border-border bg-card p-6 shadow-card">
               <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg gradient-sun">

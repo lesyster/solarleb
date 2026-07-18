@@ -16,6 +16,7 @@ import {
 import { LEBANON_CITIES, PROPERTY_TYPES, generatePlan, type PlanResult } from "@/lib/solar-config";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { PlanWalkthrough } from "@/components/plan-walkthrough";
 
 export const Route = createFileRoute("/plan")({
   head: () => ({
@@ -35,6 +36,7 @@ function PlanPage() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<PlanResult | null>(null);
   const [planId, setPlanId] = useState<string | null>(null);
+  const [hoursError, setHoursError] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     city: "",
@@ -44,6 +46,19 @@ function PlanPage() {
     monthly_kwh: "",
   });
 
+  function updateHours(raw: string) {
+    if (raw === "") {
+      setForm((f) => ({ ...f, generator_hours: "" }));
+      setHoursError(null);
+      return;
+    }
+    const n = Number(raw);
+    if (Number.isNaN(n)) return;
+    const clamped = Math.max(0, Math.min(24, n));
+    setForm((f) => ({ ...f, generator_hours: String(clamped) }));
+    setHoursError(clamped !== n ? "Enter a value between 0 and 24" : null);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.city || !form.property_type) {
@@ -52,8 +67,18 @@ function PlanPage() {
     }
     const monthly_bill = Number(form.monthly_bill);
     const generator_hours = Number(form.generator_hours);
-    if (!(monthly_bill > 0) || generator_hours < 0) {
+    if (!(monthly_bill > 0)) {
       toast.error("Please enter valid numbers");
+      return;
+    }
+    if (
+      form.generator_hours === "" ||
+      Number.isNaN(generator_hours) ||
+      generator_hours < 0 ||
+      generator_hours > 24
+    ) {
+      setHoursError("Enter a value between 0 and 24");
+      toast.error("Generator hours must be between 0 and 24");
       return;
     }
 
@@ -128,7 +153,20 @@ function PlanPage() {
     <div className="min-h-screen bg-background">
       <SiteNav />
 
-      <div className="mx-auto max-w-3xl px-4 py-12 md:py-16">
+      <div className="relative">
+        {/* Background: aerial solar farm photo, dimmed by cream overlay */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{
+            backgroundImage:
+              "url('https://images.unsplash.com/photo-1509391366360-2e959784a276?auto=format&fit=crop&w=1800&q=80')",
+          }}
+        />
+        <div aria-hidden className="pointer-events-none absolute inset-0 bg-background/90" />
+
+        <PlanWalkthrough />
+        <div className="relative mx-auto max-w-3xl px-4 py-12 md:py-16">
         <div className="mb-10 text-center">
           <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-secondary px-3 py-1 text-xs font-medium text-secondary-foreground">
             <Sparkles className="h-3.5 w-3.5 text-accent" /> Free · Takes 60 seconds
@@ -146,7 +184,7 @@ function PlanPage() {
           className="space-y-6 rounded-2xl border border-border bg-card p-6 shadow-card md:p-8"
         >
           <div className="grid gap-5 md:grid-cols-2">
-            <div className="space-y-2">
+            <div className="space-y-2" data-walkthrough="city">
               <Label htmlFor="city">City / region <span className="text-destructive">*</span></Label>
               <Select value={form.city} onValueChange={(v) => setForm((f) => ({ ...f, city: v }))}>
                 <SelectTrigger id="city"><SelectValue placeholder="Select region" /></SelectTrigger>
@@ -158,7 +196,7 @@ function PlanPage() {
               </Select>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2" data-walkthrough="property_type">
               <Label htmlFor="property_type">Property type <span className="text-destructive">*</span></Label>
               <Select value={form.property_type} onValueChange={(v) => setForm((f) => ({ ...f, property_type: v }))}>
                 <SelectTrigger id="property_type"><SelectValue placeholder="Select type" /></SelectTrigger>
@@ -170,7 +208,7 @@ function PlanPage() {
               </Select>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2" data-walkthrough="monthly_bill">
               <Label htmlFor="monthly_bill">Monthly electricity bill (USD) <span className="text-destructive">*</span></Label>
               <Input
                 id="monthly_bill"
@@ -184,19 +222,28 @@ function PlanPage() {
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2" data-walkthrough="generator_hours">
               <Label htmlFor="generator_hours">Generator hours per day <span className="text-destructive">*</span></Label>
               <Input
                 id="generator_hours"
                 type="number"
-                min="0"
-                max="24"
+                min={0}
+                max={24}
                 step="0.5"
+                inputMode="decimal"
                 placeholder="e.g. 6"
                 value={form.generator_hours}
-                onChange={(e) => setForm((f) => ({ ...f, generator_hours: e.target.value }))}
+                onChange={(e) => updateHours(e.target.value)}
+                onBlur={(e) => updateHours(e.target.value)}
+                aria-invalid={!!hoursError}
+                aria-describedby={hoursError ? "generator_hours_error" : undefined}
                 required
               />
+              {hoursError ? (
+                <p id="generator_hours_error" className="text-xs font-medium text-destructive">
+                  {hoursError}
+                </p>
+              ) : null}
             </div>
 
             <div className="space-y-2 md:col-span-2">
@@ -295,6 +342,7 @@ function PlanPage() {
             </div>
           </div>
         )}
+        </div>
       </div>
 
       <SiteFooter />

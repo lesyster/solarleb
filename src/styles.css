@@ -116,3 +116,69 @@
 @utility gradient-sun { background-image: var(--gradient-sun); }
 @utility shadow-glow { box-shadow: var(--shadow-glow); }
 @utility shadow-card { box-shadow: var(--shadow-card); }
+
+/* Hero illustration — Kurzgesagt style ambient motion */
+@property --hi-day {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+@keyframes hi-row-in {
+  from { opacity: 0; transform: translate3d(-16px, 24px, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+@keyframes hi-highlight-drift {
+  0%   { transform: translate3d(-80px, 0, 0); opacity: 0; }
+  15%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { transform: translate3d(640px, -140px, 0); opacity: 0; }
+}
+@keyframes hi-cloud-drift {
+  0%   { transform: translate3d(420px, 60px, 0); opacity: 0; }
+  15%  { opacity: 0.9; }
+  85%  { opacity: 0.9; }
+  100% { transform: translate3d(-120px, 90px, 0); opacity: 0; }
+}
+@keyframes hi-twinkle {
+  0%, 100% { opacity: 0.9; transform: scale(1); }
+  50%      { opacity: 0.3; transform: scale(0.7); }
+}
+@keyframes hi-day-night {
+  0%, 40%   { --hi-day: 0; }
+  55%, 90%  { --hi-day: 1; }
+  100%      { --hi-day: 0; }
+}
+.hero-illustration { animation: hi-day-night 14s ease-in-out infinite; }
+.hi-row { opacity: 0; transform-origin: bottom left; animation: hi-row-in 1s ease-out forwards; }
+.hi-highlight { animation: hi-highlight-drift 11s ease-in-out infinite; transform-box: fill-box; }
+.hi-cloud { transform: translate3d(420px, 60px, 0); animation: hi-cloud-drift 16s linear infinite; }
+.hi-star { transform-origin: center; transform-box: fill-box; animation: hi-twinkle 3.5s ease-in-out infinite; }
+.hi-sun-body  { opacity: var(--hi-day, 0); }
+.hi-sun-glow  { opacity: var(--hi-day, 0); }
+.hi-moon-body { opacity: calc(1 - var(--hi-day, 0)); }
+.hi-moon-glow { opacity: calc(1 - var(--hi-day, 0)); }
+.hi-stars     { opacity: calc(1 - var(--hi-day, 0)); }
+.hi-sun-rays  { transform-origin: center; transform-box: fill-box; animation: hi-twinkle 6s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-illustration, .hi-row, .hi-highlight, .hi-cloud, .hi-star, .hi-sun-rays {
+    animation: none !important;
+  }
+  .hi-row { opacity: 1; transform: none; }
+  .hero-illustration { --hi-day: 0.6; }
+}
+
+/* Scroll reveal — subtle fade + slide-up, once per element */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 500ms ease-out, transform 500ms ease-out;
+  will-change: opacity, transform;
+}
+[data-reveal].is-revealed {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] { opacity: 1; transform: none; transition: none; }
+}

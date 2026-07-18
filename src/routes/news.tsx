@@ -36,7 +36,7 @@ function NewsPage() {
           <p className="mt-2 text-muted-foreground">Solar tech, policy, and community stories from across Lebanon.</p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2" data-reveal>
           {ARTICLES.map((a) => (
             <article
               key={a.slug}
