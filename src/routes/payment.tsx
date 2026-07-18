@@ -46,6 +46,8 @@ function PaymentPage() {
   const [lockedUntil, setLockedUntil] = useState<string | null>(null);
 
   const [card, setCard] = useState({ name: "", number: "", exp: "", cvc: "" });
+  const [method, setMethod] = useState<"card" | "whish">("card");
+  const [whishPhone, setWhishPhone] = useState("");
 
   useEffect(() => {
     if (authLoading) return;
