@@ -202,9 +202,10 @@ export function PlanWalkthrough() {
           key={current.step}
           src={current.pose}
           alt={`Sami — ${current.title}`}
-          className={`h-[220px] w-auto drop-shadow-2xl md:h-[380px] select-none transition-opacity duration-300 ${poseVisible ? "opacity-100" : "opacity-0"} ${current.flip ? "scale-x-[-1]" : ""}`}
+          className={`h-[220px] w-auto drop-shadow-2xl md:h-[380px] select-none transition-opacity duration-300 ${poseVisible ? "opacity-100" : "opacity-0"}`}
           draggable={false}
         />
+
       </div>
 
 
