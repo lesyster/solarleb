@@ -58,6 +58,7 @@ function PlanPage() {
     return () => clearInterval(id);
   }, [submitting]);
 
+  const [form, setForm] = useState({
     city: "",
     monthly_bill: "",
     generator_hours: "",
