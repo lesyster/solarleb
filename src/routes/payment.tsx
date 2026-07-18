@@ -77,10 +77,18 @@ function PaymentPage() {
   async function handlePay(e: React.FormEvent) {
     e.preventDefault();
     if (!plan) return;
-    if (!card.name || card.number.replace(/\s/g, "").length < 12 || !card.exp || card.cvc.length < 3) {
-      toast.error("Please fill in valid card details");
-      return;
+    if (method === "card") {
+      if (!card.name || card.number.replace(/\s/g, "").length < 12 || !card.exp || card.cvc.length < 3) {
+        toast.error("Please fill in valid card details");
+        return;
+      }
+    } else {
+      if (whishPhone.replace(/\D/g, "").length < 7) {
+        toast.error("Please enter a valid phone number");
+        return;
+      }
     }
+
 
     setStatus("processing");
     // Mock payment processing — replace with Stripe integration later.
