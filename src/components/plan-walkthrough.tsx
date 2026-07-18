@@ -13,6 +13,7 @@ import pose6 from "@/assets/sami-pose-6.png.asset.json";
 const META_KEY = "plan_walkthrough_seen_v1";
 const LOCAL_KEY = "solarleb.plan_walkthrough_seen";
 
+
 type Step = {
   step: number;
   targetField: string | null; // matches [data-walkthrough="X"]
@@ -68,6 +69,7 @@ const STEPS: Step[] = [
 
 export function PlanWalkthrough() {
   const { user, loading } = useAuth();
+  const onboardingEnabled = true;
   const [visible, setVisible] = useState(false);
   const [index, setIndex] = useState(0);
   const [checking, setChecking] = useState(true);
@@ -93,10 +95,36 @@ export function PlanWalkthrough() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  // Decide visibility
+  // Decide visibility. Respect ?walkthrough=replay and ?walkthrough_step=N from admin.
   useEffect(() => {
     if (loading) return;
-    if (typeof window !== "undefined" && localStorage.getItem(LOCAL_KEY) === "1") {
+    if (typeof window === "undefined") return;
+
+    const params = new URLSearchParams(window.location.search);
+    const replay = params.get("walkthrough") === "replay";
+    const jumpStep = params.get("walkthrough_step");
+
+    if (replay) {
+      try { localStorage.removeItem(LOCAL_KEY); } catch {}
+      setIndex(0);
+      setVisible(true);
+      setChecking(false);
+      return;
+    }
+    if (jumpStep) {
+      const n = Math.max(1, Math.min(STEPS.length, Number(jumpStep) || 1));
+      setIndex(n - 1);
+      setVisible(true);
+      setChecking(false);
+      return;
+    }
+
+    if (!onboardingEnabled) {
+      setVisible(false);
+      setChecking(false);
+      return;
+    }
+    if (localStorage.getItem(LOCAL_KEY) === "1") {
       setChecking(false);
       return;
     }
@@ -108,7 +136,8 @@ export function PlanWalkthrough() {
     }
     setVisible(true);
     setChecking(false);
-  }, [user, loading]);
+  }, [user, loading, onboardingEnabled]);
+
 
   // Crossfade pose when step changes
   useEffect(() => {

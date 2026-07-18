@@ -1,8 +1,9 @@
 import { Link } from "@tanstack/react-router";
-import { Sun, Menu, X } from "lucide-react";
+import { Sun, Menu, X, Shield } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
+import { useIsAdmin } from "@/lib/admin";
 import { supabase } from "@/integrations/supabase/client";
 
 const NAV = [
@@ -14,6 +15,7 @@ const NAV = [
 
 export function SiteNav() {
   const { user } = useAuth();
+  const { isAdmin } = useIsAdmin();
   const [open, setOpen] = useState(false);
 
   return (
@@ -105,6 +107,18 @@ export function SiteNav() {
                 Login / Signup
               </Link>
             )}
+            {isAdmin && (
+              <>
+                <div className="my-1 border-t border-border" />
+                <Link
+                  to="/admin"
+                  onClick={() => setOpen(false)}
+                  className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-accent-foreground hover:bg-secondary"
+                >
+                  <Shield className="h-4 w-4 text-accent" /> Admin
+                </Link>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -113,6 +127,7 @@ export function SiteNav() {
 }
 
 export function SiteFooter() {
+  const { isAdmin } = useIsAdmin();
   return (
     <footer className="mt-24 border-t border-border bg-secondary/40" data-reveal>
       <div className="mx-auto max-w-6xl px-4 py-10 text-sm text-muted-foreground">
@@ -121,7 +136,14 @@ export function SiteFooter() {
             <Sun className="h-4 w-4 text-accent" />
             SolarLeb
           </div>
-          <p>© {new Date().getFullYear()} SolarLeb. Reliable power for Lebanon.</p>
+          <div className="flex items-center gap-4">
+            {isAdmin && (
+              <Link to="/admin" className="hidden items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground md:inline-flex">
+                <Shield className="h-3 w-3" /> Admin
+              </Link>
+            )}
+            <p>© {new Date().getFullYear()} SolarLeb. Reliable power for Lebanon.</p>
+          </div>
         </div>
       </div>
     </footer>

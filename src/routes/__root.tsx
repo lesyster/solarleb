@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { Toaster } from "@/components/ui/sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 function NotFoundComponent() {
   return (
@@ -144,6 +145,26 @@ function RootComponent() {
       io.disconnect();
       mo.disconnect();
     };
+  }, []);
+
+  // Record each successful sign-in for the admin "Recent Logins" section.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event !== "SIGNED_IN" || !session?.user) return;
+      const user = session.user;
+      // Deduplicate per session: only log the first SIGNED_IN of a session
+      const marker = `solarleb.login_logged.${session.access_token.slice(-16)}`;
+      try {
+        if (sessionStorage.getItem(marker)) return;
+        sessionStorage.setItem(marker, "1");
+      } catch { /* ignore storage errors */ }
+      supabase
+        .from("login_events")
+        .insert({ user_id: user.id, email: user.email ?? "" })
+        .then(({ error }) => { if (error) console.warn("[login_events]", error.message); });
+    });
+    return () => sub.subscription.unsubscribe();
   }, []);
 
   return (

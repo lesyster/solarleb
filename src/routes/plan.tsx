@@ -27,6 +27,8 @@ import { LEBANON_CITIES, PROPERTY_TYPES, generatePlan, type PlanResult } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { PlanWalkthrough } from "@/components/plan-walkthrough";
+import { logError } from "@/lib/admin";
+
 
 export const Route = createFileRoute("/plan")({
   head: () => ({
@@ -65,6 +67,10 @@ function PlanPage() {
     property_type: "",
     monthly_kwh: "",
   });
+
+
+
+
 
   function updateHours(raw: string) {
     if (raw === "") {
@@ -137,6 +143,8 @@ function PlanPage() {
             payback_period: plan.payback_period,
             explanation_text: plan.explanation_text,
             user_id: user?.id ?? null,
+            user_email: user?.email ?? null,
+            status: "success",
           })
           .select("id")
           .single();
@@ -153,11 +161,28 @@ function PlanPage() {
       toast.success("Your solar plan is ready");
     } catch (err) {
       console.error(err);
+      const message = err instanceof Error ? err.message : String(err);
+      void logError("plan.generate", message, { form });
+      // Record a failed generation so it shows up in the admin table
+      try {
+        await supabase.from("plans").insert({
+          city: form.city || "unknown",
+          monthly_bill: Number(form.monthly_bill) || 0,
+          generator_hours: Number(form.generator_hours) || 0,
+          property_type: form.property_type || "unknown",
+          monthly_kwh: form.monthly_kwh ? Number(form.monthly_kwh) : null,
+          user_id: user?.id ?? null,
+          user_email: user?.email ?? null,
+          status: "failed",
+          explanation_text: message.slice(0, 500),
+        });
+      } catch { /* swallow */ }
       toast.error("Something went wrong generating your plan. Please try again.");
     } finally {
       setSubmitting(false);
     }
   }
+
 
   function handleLockIn() {
     if (!planId) return;
