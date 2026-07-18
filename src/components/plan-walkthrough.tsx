@@ -187,7 +187,7 @@ export function PlanWalkthrough() {
       {anchor && (
         <div
           aria-hidden
-          className="pointer-events-none absolute z-40 rounded-lg ring-2 ring-accent ring-offset-2 ring-offset-background transition-all duration-300"
+          className="pointer-events-none fixed z-40 rounded-lg ring-2 ring-accent ring-offset-2 ring-offset-background transition-all duration-300"
           style={{
             top: anchor.top - 4,
             left: anchor.left - 4,
@@ -202,10 +202,11 @@ export function PlanWalkthrough() {
           key={current.step}
           src={current.pose}
           alt={`Sami — ${current.title}`}
-          className={`h-[220px] w-auto drop-shadow-2xl md:h-[380px] select-none transition-opacity duration-300 ${poseVisible ? "opacity-100" : "opacity-0"}`}
+          className={`h-[220px] w-auto drop-shadow-2xl md:h-[380px] select-none transition-opacity duration-300 ${poseVisible ? "opacity-100" : "opacity-0"} ${current.flip ? "scale-x-[-1]" : ""}`}
           draggable={false}
         />
       </div>
+
 
       <div
         role="dialog"
