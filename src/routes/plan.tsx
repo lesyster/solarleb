@@ -1,7 +1,17 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Sun, Battery, DollarSign, TrendingDown, Clock, Lock, Sparkles } from "lucide-react";
+import { Loader2, Sun, Battery, DollarSign, TrendingDown, Clock, Lock, Sparkles, PanelTop, BatteryCharging } from "lucide-react";
+
+const LOADING_PHRASES = [
+  "Reading your inputs...",
+  "Sizing your panels...",
+  "Crunching the sun math...",
+  "Cogitating...",
+  "Crystallizing your plan...",
+  "Balancing your battery...",
+  "Finalizing your numbers...",
+];
 import { SiteNav, SiteFooter } from "@/components/site-nav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
