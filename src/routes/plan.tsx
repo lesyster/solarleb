@@ -1,7 +1,17 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Sun, Battery, DollarSign, TrendingDown, Clock, Lock, Sparkles } from "lucide-react";
+import { Loader2, Sun, Battery, DollarSign, TrendingDown, Clock, Lock, Sparkles, PanelTop, BatteryCharging } from "lucide-react";
+
+const LOADING_PHRASES = [
+  "Reading your inputs...",
+  "Sizing your panels...",
+  "Crunching the sun math...",
+  "Cogitating...",
+  "Crystallizing your plan...",
+  "Balancing your battery...",
+  "Finalizing your numbers...",
+];
 import { SiteNav, SiteFooter } from "@/components/site-nav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,9 +44,19 @@ function PlanPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
+  const [loadingPhraseIdx, setLoadingPhraseIdx] = useState(0);
   const [result, setResult] = useState<PlanResult | null>(null);
   const [planId, setPlanId] = useState<string | null>(null);
   const [hoursError, setHoursError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!submitting) return;
+    setLoadingPhraseIdx(0);
+    const id = setInterval(() => {
+      setLoadingPhraseIdx((i) => (i + 1) % LOADING_PHRASES.length);
+    }, 1200);
+    return () => clearInterval(id);
+  }, [submitting]);
 
   const [form, setForm] = useState({
     city: "",
@@ -267,12 +287,18 @@ function PlanPage() {
             className="w-full bg-deep text-deep-foreground hover:bg-deep/90"
           >
             {submitting ? (
-              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Analyzing your energy needs...</>
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {LOADING_PHRASES[loadingPhraseIdx]}</>
             ) : (
               <>Generate My Plan</>
             )}
           </Button>
+          {submitting && (
+            <p className="text-center text-sm text-muted-foreground animate-pulse" aria-live="polite">
+              {LOADING_PHRASES[loadingPhraseIdx]}
+            </p>
+          )}
         </form>
+
 
         {result && (
           <div className="mt-10 space-y-6">
@@ -295,6 +321,16 @@ function PlanPage() {
                   icon={DollarSign}
                   label="Est. installation cost"
                   value={`$${result.estimated_cost_low.toLocaleString()} – $${result.estimated_cost_high.toLocaleString()}`}
+                />
+                <StatCard
+                  icon={PanelTop}
+                  label="Est. panel cost"
+                  value={`$${Math.round(result.estimated_cost_low * 0.7).toLocaleString()} – $${Math.round(result.estimated_cost_high * 0.7).toLocaleString()}`}
+                />
+                <StatCard
+                  icon={BatteryCharging}
+                  label="Est. battery cost"
+                  value={`$${Math.round(result.estimated_cost_low * 0.3).toLocaleString()} – $${Math.round(result.estimated_cost_high * 0.3).toLocaleString()}`}
                 />
                 <StatCard
                   icon={TrendingDown}

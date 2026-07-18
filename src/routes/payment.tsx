@@ -46,6 +46,8 @@ function PaymentPage() {
   const [lockedUntil, setLockedUntil] = useState<string | null>(null);
 
   const [card, setCard] = useState({ name: "", number: "", exp: "", cvc: "" });
+  const [method, setMethod] = useState<"card" | "whish">("card");
+  const [whishPhone, setWhishPhone] = useState("");
 
   useEffect(() => {
     if (authLoading) return;
@@ -75,10 +77,18 @@ function PaymentPage() {
   async function handlePay(e: React.FormEvent) {
     e.preventDefault();
     if (!plan) return;
-    if (!card.name || card.number.replace(/\s/g, "").length < 12 || !card.exp || card.cvc.length < 3) {
-      toast.error("Please fill in valid card details");
-      return;
+    if (method === "card") {
+      if (!card.name || card.number.replace(/\s/g, "").length < 12 || !card.exp || card.cvc.length < 3) {
+        toast.error("Please fill in valid card details");
+        return;
+      }
+    } else {
+      if (whishPhone.replace(/\D/g, "").length < 7) {
+        toast.error("Please enter a valid phone number");
+        return;
+      }
     }
+
 
     setStatus("processing");
     // Mock payment processing — replace with Stripe integration later.
@@ -217,50 +227,109 @@ function PaymentPage() {
             </div>
           ) : (
             <form onSubmit={handlePay} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="card-name">Name on card</Label>
-                <Input id="card-name" value={card.name} onChange={(e) => setCard((c) => ({ ...c, name: e.target.value }))} required maxLength={100} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="card-number">Card number</Label>
-                <Input
-                  id="card-number"
-                  inputMode="numeric"
-                  placeholder="4242 4242 4242 4242"
-                  value={card.number}
-                  onChange={(e) => setCard((c) => ({ ...c, number: e.target.value }))}
-                  required
-                  maxLength={23}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="card-exp">Expiry</Label>
-                  <Input id="card-exp" placeholder="MM/YY" value={card.exp} onChange={(e) => setCard((c) => ({ ...c, exp: e.target.value }))} required maxLength={7} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="card-cvc">CVC</Label>
-                  <Input id="card-cvc" inputMode="numeric" placeholder="123" value={card.cvc} onChange={(e) => setCard((c) => ({ ...c, cvc: e.target.value }))} required maxLength={4} />
-                </div>
+              <div className="grid grid-cols-2 gap-2 rounded-lg bg-secondary/60 p-1">
+                <button
+                  type="button"
+                  onClick={() => setMethod("card")}
+                  className={`rounded-md px-3 py-2 text-sm font-semibold transition ${
+                    method === "card" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Card
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMethod("whish")}
+                  className={`rounded-md px-3 py-2 text-sm font-semibold transition ${
+                    method === "whish" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Whish Money
+                </button>
               </div>
 
-              <Button
-                type="submit"
-                size="lg"
-                disabled={status === "processing"}
-                className="w-full gradient-sun text-deep font-semibold shadow-glow hover:opacity-90"
-              >
-                {status === "processing" ? (
-                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
-                ) : (
-                  <><Lock className="mr-2 h-4 w-4" /> Pay $25 & lock in price</>
-                )}
-              </Button>
+              {method === "card" ? (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="card-name">Name on card</Label>
+                    <Input id="card-name" value={card.name} onChange={(e) => setCard((c) => ({ ...c, name: e.target.value }))} required maxLength={100} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="card-number">Card number</Label>
+                    <Input
+                      id="card-number"
+                      inputMode="numeric"
+                      placeholder="4242 4242 4242 4242"
+                      value={card.number}
+                      onChange={(e) => setCard((c) => ({ ...c, number: e.target.value }))}
+                      required
+                      maxLength={23}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="card-exp">Expiry</Label>
+                      <Input id="card-exp" placeholder="MM/YY" value={card.exp} onChange={(e) => setCard((c) => ({ ...c, exp: e.target.value }))} required maxLength={7} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="card-cvc">CVC</Label>
+                      <Input id="card-cvc" inputMode="numeric" placeholder="123" value={card.cvc} onChange={(e) => setCard((c) => ({ ...c, cvc: e.target.value }))} required maxLength={4} />
+                    </div>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    size="lg"
+                    disabled={status === "processing"}
+                    className="w-full gradient-sun text-deep font-semibold shadow-glow hover:opacity-90"
+                  >
+                    {status === "processing" ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...</>
+                    ) : (
+                      <><Lock className="mr-2 h-4 w-4" /> Pay $25 & lock in price</>
+                    )}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="whish-phone">Whish Money phone number</Label>
+                    <Input
+                      id="whish-phone"
+                      type="tel"
+                      inputMode="tel"
+                      placeholder="+961 70 000 000"
+                      value={whishPhone}
+                      onChange={(e) => setWhishPhone(e.target.value)}
+                      required
+                      maxLength={20}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      We'll send a $25 payment request to this number via Whish Money.
+                    </p>
+                  </div>
+
+                  <Button
+                    type="submit"
+                    size="lg"
+                    disabled={status === "processing"}
+                    className="w-full bg-[#e30613] text-white font-semibold hover:bg-[#c80511]"
+                  >
+                    {status === "processing" ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending request...</>
+                    ) : (
+                      <>Send Payment Request — $25</>
+                    )}
+                  </Button>
+                </>
+              )}
+
               <p className="text-center text-xs text-muted-foreground">
-                Demo mode — no real charge is made. Wire up Stripe when ready to go live.
+                Demo mode — no real charge is made.
               </p>
             </form>
           )}
+
         </div>
       </div>
       <SiteFooter />
