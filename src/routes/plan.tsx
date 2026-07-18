@@ -287,12 +287,18 @@ function PlanPage() {
             className="w-full bg-deep text-deep-foreground hover:bg-deep/90"
           >
             {submitting ? (
-              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Analyzing your energy needs...</>
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {LOADING_PHRASES[loadingPhraseIdx]}</>
             ) : (
               <>Generate My Plan</>
             )}
           </Button>
+          {submitting && (
+            <p className="text-center text-sm text-muted-foreground animate-pulse" aria-live="polite">
+              {LOADING_PHRASES[loadingPhraseIdx]}
+            </p>
+          )}
         </form>
+
 
         {result && (
           <div className="mt-10 space-y-6">
