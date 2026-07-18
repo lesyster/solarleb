@@ -44,11 +44,20 @@ function PlanPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [submitting, setSubmitting] = useState(false);
+  const [loadingPhraseIdx, setLoadingPhraseIdx] = useState(0);
   const [result, setResult] = useState<PlanResult | null>(null);
   const [planId, setPlanId] = useState<string | null>(null);
   const [hoursError, setHoursError] = useState<string | null>(null);
 
-  const [form, setForm] = useState({
+  useEffect(() => {
+    if (!submitting) return;
+    setLoadingPhraseIdx(0);
+    const id = setInterval(() => {
+      setLoadingPhraseIdx((i) => (i + 1) % LOADING_PHRASES.length);
+    }, 1200);
+    return () => clearInterval(id);
+  }, [submitting]);
+
     city: "",
     monthly_bill: "",
     generator_hours: "",
