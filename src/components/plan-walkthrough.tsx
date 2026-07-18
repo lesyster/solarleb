@@ -132,13 +132,17 @@ export function PlanWalkthrough() {
       const el = findEl();
       if (!el) { setAnchor(null); return; }
       const r = el.getBoundingClientRect();
-      setAnchor({ top: r.top + window.scrollY, left: r.left + window.scrollX, width: r.width, height: r.height });
+      setAnchor({ top: r.top, left: r.left, width: r.width, height: r.height });
     };
 
-    // Scroll into view first, then measure on the next frame
+    // Scroll into view first, then keep measuring while the smooth scroll settles
     const el = findEl();
     if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    update();
     const raf = requestAnimationFrame(update);
+    const interval = window.setInterval(update, 100);
+    const stop = window.setTimeout(() => window.clearInterval(interval), 800);
+
 
     window.addEventListener("resize", update);
     window.addEventListener("scroll", update, true);
