@@ -132,21 +132,27 @@ export function PlanWalkthrough() {
       const el = findEl();
       if (!el) { setAnchor(null); return; }
       const r = el.getBoundingClientRect();
-      setAnchor({ top: r.top + window.scrollY, left: r.left + window.scrollX, width: r.width, height: r.height });
+      setAnchor({ top: r.top, left: r.left, width: r.width, height: r.height });
     };
 
-    // Scroll into view first, then measure on the next frame
+    // Scroll into view first, then keep measuring while the smooth scroll settles
     const el = findEl();
     if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    update();
     const raf = requestAnimationFrame(update);
+    const interval = window.setInterval(update, 100);
+    const stopTimer = window.setTimeout(() => window.clearInterval(interval), 800);
 
     window.addEventListener("resize", update);
     window.addEventListener("scroll", update, true);
     return () => {
       cancelAnimationFrame(raf);
+      window.clearInterval(interval);
+      window.clearTimeout(stopTimer);
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
     };
+
   }, [visible, current.targetField]);
 
   async function dismiss() {
@@ -161,12 +167,13 @@ export function PlanWalkthrough() {
   const bubbleStyle: React.CSSProperties | undefined = useMemo(() => {
     if (!isDesktop || !anchor) return undefined;
     return {
-      position: "absolute",
+      position: "fixed",
       top: anchor.top + anchor.height + 12,
       left: Math.max(16, Math.min(anchor.left, window.innerWidth - 380)),
       maxWidth: 340,
     };
   }, [isDesktop, anchor]);
+
 
   if (checking || !visible) return null;
 
@@ -180,7 +187,7 @@ export function PlanWalkthrough() {
       {anchor && (
         <div
           aria-hidden
-          className="pointer-events-none absolute z-40 rounded-lg ring-2 ring-accent ring-offset-2 ring-offset-background transition-all duration-300"
+          className="pointer-events-none fixed z-40 rounded-lg ring-2 ring-accent ring-offset-2 ring-offset-background transition-all duration-300"
           style={{
             top: anchor.top - 4,
             left: anchor.left - 4,
@@ -198,7 +205,9 @@ export function PlanWalkthrough() {
           className={`h-[220px] w-auto drop-shadow-2xl md:h-[380px] select-none transition-opacity duration-300 ${poseVisible ? "opacity-100" : "opacity-0"}`}
           draggable={false}
         />
+
       </div>
+
 
       <div
         role="dialog"
