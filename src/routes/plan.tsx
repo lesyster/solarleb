@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Loader2, Lock, Sparkles } from "lucide-react";
 import {
-  ResultSystemIcon,
   ResultBatteryIcon,
   ResultDollarIcon,
   ResultPanelIcon,
@@ -33,6 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import { LEBANON_CITIES, PROPERTY_TYPES, generatePlan, type PlanResult } from "@/lib/solar-config";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -60,10 +60,15 @@ type PendingPlan = {
     monthly_bill: number;
     generator_hours: number;
     property_type: string;
-    monthly_kwh: number | null;
+    amps_needed: number;
+    voltage_layout: "24V" | "48V";
   };
   result: PlanResult;
 };
+
+function batterySummary(plan: PlanResult) {
+  return `${plan.num_battery_units} × ${plan.battery_brand} ${plan.battery_ah_each}Ah (${plan.voltage_layout})`;
+}
 
 async function savePlanToDb(pending: PendingPlan, userId: string | null, userEmail: string | null) {
   const { input, result: plan } = pending;
@@ -74,9 +79,9 @@ async function savePlanToDb(pending: PendingPlan, userId: string | null, userEma
       monthly_bill: input.monthly_bill,
       generator_hours: input.generator_hours,
       property_type: input.property_type,
-      monthly_kwh: input.monthly_kwh,
+      monthly_kwh: null,
       recommended_system_kw: plan.system_size_kw,
-      recommended_battery: `${plan.battery_capacity_kwh} kWh ${plan.battery_chemistry}`,
+      recommended_battery: batterySummary(plan),
       estimated_cost_low: plan.total_installation_cost,
       estimated_cost_high: plan.total_installation_cost,
       estimated_savings: plan.monthly_savings,
@@ -113,17 +118,22 @@ function PlanPage() {
     return () => clearInterval(id);
   }, [submitting]);
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    city: string;
+    monthly_bill: string;
+    generator_hours: string;
+    property_type: string;
+    amps_needed: string;
+    voltage_layout: "24V" | "48V";
+  }>({
     city: "",
     monthly_bill: "",
     generator_hours: "",
     property_type: "",
-    monthly_kwh: "",
+    amps_needed: "",
+    voltage_layout: "24V",
   });
 
-  // Restore any pending plan saved before a login redirect. If the user is now
-  // signed in, persist to their account and clear storage; otherwise leave it
-  // in place so a cancelled login still shows the plan.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const raw = window.localStorage.getItem(PENDING_PLAN_KEY);
@@ -143,7 +153,8 @@ function PlanPage() {
       monthly_bill: String(pending!.input.monthly_bill ?? ""),
       generator_hours: String(pending!.input.generator_hours ?? ""),
       property_type: pending!.input.property_type ?? "",
-      monthly_kwh: pending!.input.monthly_kwh != null ? String(pending!.input.monthly_kwh) : "",
+      amps_needed: pending!.input.amps_needed != null ? String(pending!.input.amps_needed) : "",
+      voltage_layout: (pending!.input.voltage_layout as "24V" | "48V") ?? "24V",
     }));
 
     if (user) {
@@ -154,9 +165,6 @@ function PlanPage() {
       });
     }
   }, [user]);
-
-
-
 
 
   function updateHours(raw: string) {
@@ -180,8 +188,13 @@ function PlanPage() {
     }
     const monthly_bill = Number(form.monthly_bill);
     const generator_hours = Number(form.generator_hours);
+    const amps_needed = Number(form.amps_needed);
     if (!(monthly_bill > 0)) {
       toast.error("Please enter valid numbers");
+      return;
+    }
+    if (!(amps_needed > 0)) {
+      toast.error("Please enter the amps you need");
       return;
     }
     if (
@@ -205,13 +218,13 @@ function PlanPage() {
         monthly_bill,
         generator_hours,
         property_type: form.property_type,
-        monthly_kwh: form.monthly_kwh ? Number(form.monthly_kwh) : null,
+        amps_needed,
+        voltage_layout: form.voltage_layout,
       };
 
       const plan = await generatePlan(input);
       setResult(plan);
 
-      // Try to save to database, but don't block UX if it fails
       let savedId: string | null = null;
       try {
         const { data, error } = await supabase
@@ -221,15 +234,14 @@ function PlanPage() {
             monthly_bill: input.monthly_bill,
             generator_hours: input.generator_hours,
             property_type: input.property_type,
-            monthly_kwh: input.monthly_kwh,
+            monthly_kwh: null,
             recommended_system_kw: plan.system_size_kw,
-            recommended_battery: `${plan.battery_capacity_kwh} kWh ${plan.battery_chemistry}`,
+            recommended_battery: batterySummary(plan),
             estimated_cost_low: plan.total_installation_cost,
             estimated_cost_high: plan.total_installation_cost,
             estimated_savings: plan.monthly_savings,
             payback_period: `${plan.payback_years} years ${plan.payback_months} months`,
             explanation_text: plan.summary,
-
             user_id: user?.id ?? null,
             user_email: user?.email ?? null,
             status: "success",
@@ -251,14 +263,13 @@ function PlanPage() {
       console.error(err);
       const message = err instanceof Error ? err.message : String(err);
       void logError("plan.generate", message, { form });
-      // Record a failed generation so it shows up in the admin table
       try {
         await supabase.from("plans").insert({
           city: form.city || "unknown",
           monthly_bill: Number(form.monthly_bill) || 0,
           generator_hours: Number(form.generator_hours) || 0,
           property_type: form.property_type || "unknown",
-          monthly_kwh: form.monthly_kwh ? Number(form.monthly_kwh) : null,
+          monthly_kwh: null,
           user_id: user?.id ?? null,
           user_email: user?.email ?? null,
           status: "failed",
@@ -275,14 +286,14 @@ function PlanPage() {
   function handleLockIn() {
     if (!result) return;
     if (!user) {
-      // Persist plan so it survives the login round-trip (and stays if cancelled).
       const pending: PendingPlan = {
         input: {
           city: form.city,
           monthly_bill: Number(form.monthly_bill) || 0,
           generator_hours: Number(form.generator_hours) || 0,
           property_type: form.property_type,
-          monthly_kwh: form.monthly_kwh ? Number(form.monthly_kwh) : null,
+          amps_needed: Number(form.amps_needed) || 0,
+          voltage_layout: form.voltage_layout,
         },
         result,
       };
@@ -303,7 +314,6 @@ function PlanPage() {
       <SiteNav />
 
       <div className="relative">
-        {/* Background: aerial solar farm photo, dimmed by cream overlay */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -395,17 +405,50 @@ function PlanPage() {
               ) : null}
             </div>
 
-            <div className="space-y-2 md:col-span-2">
-              <Label htmlFor="monthly_kwh">Rough monthly usage in kWh <span className="text-muted-foreground">(optional)</span></Label>
+            <div className="space-y-2" data-walkthrough="amps_needed">
+              <Label htmlFor="amps_needed">Amps needed (A) <span className="text-destructive">*</span></Label>
               <Input
-                id="monthly_kwh"
+                id="amps_needed"
                 type="number"
-                min="0"
+                min="1"
                 step="1"
-                placeholder="Leave blank if unknown — we'll estimate"
-                value={form.monthly_kwh}
-                onChange={(e) => setForm((f) => ({ ...f, monthly_kwh: e.target.value }))}
+                inputMode="numeric"
+                placeholder="e.g. 5A"
+                value={form.amps_needed}
+                onChange={(e) => setForm((f) => ({ ...f, amps_needed: e.target.value }))}
+                required
               />
+              <p className="text-xs text-muted-foreground">
+                Not sure? Check your breaker or ask your electrician.
+              </p>
+            </div>
+
+            <div className="space-y-2" data-walkthrough="voltage_layout">
+              <Label>System voltage <span className="text-destructive">*</span></Label>
+              <div className="inline-flex rounded-lg border border-border bg-background p-1">
+                {(["24V", "48V"] as const).map((v) => {
+                  const active = form.voltage_layout === v;
+                  return (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, voltage_layout: v }))}
+                      className={cn(
+                        "px-5 py-2 text-sm font-semibold rounded-md transition-colors",
+                        active
+                          ? "bg-deep text-deep-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground",
+                      )}
+                      aria-pressed={active}
+                    >
+                      {v}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                24V is standard for smaller homes; 48V suits larger systems.
+              </p>
             </div>
           </div>
 
@@ -444,27 +487,48 @@ function PlanPage() {
                 </p>
               </div>
 
-              <div className="mt-10 grid gap-4 md:grid-cols-2">
-                <StatCard
-                  icon={ResultBatteryIcon}
-                  label="Battery capacity"
-                  value={`${result.battery_capacity_kwh} kWh ${result.battery_chemistry}`}
-                />
-                <StatCard
-                  icon={ResultDollarIcon}
-                  label="Est. installation cost"
-                  value={`$${result.total_installation_cost.toLocaleString()}`}
-                />
-                <StatCard
+              <div className="mt-10 grid gap-4 md:grid-cols-3">
+                <ComponentCard
                   icon={ResultPanelIcon}
-                  label="Est. panel cost"
-                  value={`$${result.panel_cost.toLocaleString()}`}
+                  label="Panels"
+                  headline={`${result.num_panels} × ${result.panel_brand} ${result.panel_watt_each}W`}
+                  subline={`${result.num_panels} panels @ $${result.panel_unit_price.toLocaleString()} each`}
+                  total={`$${result.panel_total_cost.toLocaleString()}`}
                 />
-                <StatCard
+                <ComponentCard
+                  icon={ResultBatteryIcon}
+                  label="Battery"
+                  headline={`${result.num_battery_units} × ${result.battery_brand} ${result.battery_ah_each}Ah lithium`}
+                  subline={`${result.voltage_layout} layout · $${result.battery_unit_price.toLocaleString()} each`}
+                  total={`$${result.battery_total_cost.toLocaleString()}`}
+                />
+                <ComponentCard
                   icon={ResultChargeIcon}
-                  label="Est. battery cost"
-                  value={`$${result.battery_cost.toLocaleString()}`}
+                  label="Inverter"
+                  headline={result.inverter_name}
+                  subline="Hybrid inverter · included in system"
+                  total={`$${result.inverter_total_cost.toLocaleString()}`}
                 />
+              </div>
+
+              <div className="mt-8 rounded-xl border border-accent/40 bg-secondary/40 p-6">
+                <div className="flex flex-wrap items-baseline justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <ResultDollarIcon className="h-10 w-10" />
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">Total installation cost</p>
+                      <p className="font-display text-3xl font-bold text-foreground md:text-4xl">
+                        ${result.total_installation_cost.toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Excludes mounting structure and installation labor, quoted separately.
+                </p>
+              </div>
+
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
                 <StatCard
                   icon={ResultTrendDownIcon}
                   label="Est. monthly savings"
@@ -483,8 +547,6 @@ function PlanPage() {
                 </p>
               </div>
             </div>
-
-            <TypeAnalyticsPanel result={result} />
 
 
             <div className="rounded-2xl border-2 border-accent bg-card p-6 md:p-8">
@@ -536,89 +598,29 @@ function StatCard({ icon: Icon, label, value }: { icon: React.ComponentType<{ cl
   );
 }
 
-function TypeAnalyticsPanel({ result }: { result: PlanResult }) {
-  const panelIsMono = /mono/i.test(result.recommended_panel_type);
-  const batteryIsLifepo = /lifepo|lfp|iron/i.test(result.recommended_battery_type);
-
-  const panelCompare = [
-    { name: "Monocrystalline", efficiency: 21, recommended: panelIsMono },
-    { name: "Polycrystalline", efficiency: 16, recommended: !panelIsMono },
-  ];
-  const batteryCompare = [
-    { name: "LiFePO₄", lifespan: 6000, recommended: batteryIsLifepo },
-    { name: "Lead-acid", lifespan: 800, recommended: !batteryIsLifepo },
-  ];
-
-  return (
-    <div className="grid gap-6 md:grid-cols-2">
-      <TypeCard
-        badge={<ResultPanelIcon className="h-11 w-11" />}
-        eyebrow="Panel type"
-        title={result.recommended_panel_type}
-        body={result.recommended_panel_reason}
-        rows={panelCompare.map((r) => ({
-          label: r.name,
-          value: `${r.efficiency}% efficiency`,
-          pct: (r.efficiency / 25) * 100,
-          recommended: r.recommended,
-        }))}
-      />
-      <TypeCard
-        badge={<ResultBatteryIcon className="h-11 w-11" />}
-        eyebrow="Battery type"
-        title={result.recommended_battery_type}
-        body={result.recommended_battery_reason}
-        rows={batteryCompare.map((r) => ({
-          label: r.name,
-          value: `${r.lifespan.toLocaleString()} cycles`,
-          pct: (r.lifespan / 6000) * 100,
-          recommended: r.recommended,
-        }))}
-      />
-    </div>
-  );
-}
-
-function TypeCard({
-  badge, eyebrow, title, body, rows,
+function ComponentCard({
+  icon: Icon,
+  label,
+  headline,
+  subline,
+  total,
 }: {
-  badge: React.ReactNode;
-  eyebrow: string;
-  title: string;
-  body: string;
-  rows: { label: string; value: string; pct: number; recommended: boolean }[];
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  headline: string;
+  subline: string;
+  total: string;
 }) {
   return (
-    <div className="rounded-2xl border border-accent/40 bg-card p-6 shadow-card md:p-7">
-      <div className="mb-4 flex items-center gap-3">
-        {badge}
-        <div>
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-accent-foreground/70">{eyebrow}</p>
-          <p className="font-display text-lg font-bold text-foreground">{title}</p>
-        </div>
-      </div>
-      <p className="text-sm leading-relaxed text-muted-foreground">{body}</p>
-
-      <div className="mt-5 space-y-3">
-        {rows.map((r) => (
-          <div key={r.label}>
-            <div className="mb-1 flex items-center justify-between text-xs">
-              <span className={r.recommended ? "font-semibold text-foreground" : "text-muted-foreground"}>
-                {r.label}
-                {r.recommended ? <span className="ml-2 rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-foreground">Recommended</span> : null}
-              </span>
-              <span className="tabular-nums text-muted-foreground">{r.value}</span>
-            </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
-              <div
-                className={r.recommended ? "h-full gradient-sun" : "h-full bg-muted-foreground/40"}
-                style={{ width: `${Math.max(6, Math.min(100, r.pct))}%` }}
-              />
-            </div>
-          </div>
-        ))}
+    <div className="flex flex-col rounded-xl border border-border bg-background p-5">
+      <Icon className="mb-3 h-12 w-12" />
+      <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-1 font-display text-lg font-bold text-foreground leading-tight">{headline}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{subline}</p>
+      <div className="mt-4 border-t border-border pt-3">
+        <p className="text-xs uppercase tracking-wide text-muted-foreground">Total</p>
+        <p className="font-display text-xl font-bold text-foreground">{total}</p>
       </div>
     </div>
   );
 }
-

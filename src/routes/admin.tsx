@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
+import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
   Shield, RefreshCw, AlertTriangle, LogIn, FileText, ScrollText,
@@ -8,6 +9,7 @@ import {
 
 import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin, auditLog, WALKTHROUGH_LOCAL_KEY, WALKTHROUGH_META_KEY } from "@/lib/admin";
+import { adminDeleteRow, adminWipeAll } from "@/lib/admin-actions.functions";
 import { SiteNav, SiteFooter } from "@/components/site-nav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -117,6 +119,7 @@ function AdminPage() {
             <RoleManagementSection />
           </div>
 
+          <DangerZoneSection />
         </main>
 
         <SiteFooter />
@@ -170,6 +173,44 @@ function TableSkeleton({ rows = 4, cols = 3 }: { rows?: number; cols?: number })
 
 function EmptyState({ children }: { children: React.ReactNode }) {
   return <div className="px-6 py-12 text-center text-sm text-muted-foreground">{children}</div>;
+}
+
+// ---------- delete confirmation ----------
+function DeleteConfirmDialog({
+  open, onCancel, onConfirm, title, description, busy,
+}: {
+  open: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+  title: string;
+  description: string;
+  busy?: boolean;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onCancel()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{description}</DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={onCancel} disabled={busy}>Cancel</Button>
+          <Button variant="destructive" onClick={onConfirm} disabled={busy}>
+            {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Delete
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DeleteRowButton({ onClick }: { onClick: (e: React.MouseEvent) => void }) {
+  return (
+    <Button size="sm" variant="ghost" onClick={onClick} aria-label="Delete row">
+      <Trash2 className="h-4 w-4 text-destructive" />
+    </Button>
+  );
 }
 
 // ---------- time helpers ----------
@@ -278,9 +319,39 @@ function useLoadMore<T>(
   return { rows, loading, more, hasMore, loadMore: () => load(false), refresh: () => load(true), setRows };
 }
 
+// ---------- shared delete hook ----------
+function useAdminDelete<T extends { id: string }>(
+  table: "login_events" | "plans" | "contact_messages" | "error_logs" | "admin_audit_log",
+  setRows: React.Dispatch<React.SetStateAction<T[]>>,
+  auditAction: string,
+  targetLabel: (row: T) => string,
+) {
+  const deleteRow = useServerFn(adminDeleteRow);
+  const [confirmRow, setConfirmRow] = useState<T | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function handleConfirm() {
+    if (!confirmRow) return;
+    setBusy(true);
+    try {
+      await deleteRow({ data: { table, id: confirmRow.id } });
+      await auditLog(auditAction, targetLabel(confirmRow));
+      setRows((r) => r.filter((x) => x.id !== confirmRow.id));
+      toast.success("Deleted");
+      setConfirmRow(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return { confirmRow, setConfirmRow, busy, handleConfirm };
+}
+
 // ---------- 2. logins ----------
 function LoginsSection() {
-  const { rows, loading, more, hasMore, loadMore, refresh } = useLoadMore<LoginEvent>(
+  const { rows, loading, more, hasMore, loadMore, refresh, setRows } = useLoadMore<LoginEvent>(
     async (offset, limit) => {
       const { data, count } = await supabase
         .from("login_events")
@@ -290,56 +361,70 @@ function LoginsSection() {
       return { data: (data ?? []) as LoginEvent[], total: count };
     },
   );
+  const del = useAdminDelete<LoginEvent>("login_events", setRows, "login_event.delete", (r) => r.email);
 
   return (
-    <Section
-      icon={LogIn}
-      title="Recent logins"
-      description="Most recent user sign-ins, newest first."
-      action={<Button variant="outline" size="sm" onClick={refresh}>Refresh</Button>}
-    >
-      {loading ? (
-        <TableSkeleton rows={4} cols={2} />
-      ) : rows.length === 0 ? (
-        <EmptyState>No recent logins yet</EmptyState>
-      ) : (
-        <>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Email</TableHead>
-                  <TableHead className="text-right">When</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell className="font-medium">{r.email}</TableCell>
-                    <TableCell className="text-right"><TimeCell iso={r.created_at} /></TableCell>
+    <>
+      <Section
+        icon={LogIn}
+        title="Recent logins"
+        description="Most recent user sign-ins, newest first."
+        action={<Button variant="outline" size="sm" onClick={refresh}>Refresh</Button>}
+      >
+        {loading ? (
+          <TableSkeleton rows={4} cols={2} />
+        ) : rows.length === 0 ? (
+          <EmptyState>No recent logins yet</EmptyState>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Email</TableHead>
+                    <TableHead>When</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-          {hasMore && (
-            <div className="border-t border-border p-3 text-center">
-              <Button variant="outline" size="sm" onClick={loadMore} disabled={more}>
-                {more ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Load more
-              </Button>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell className="font-medium">{r.email}</TableCell>
+                      <TableCell><TimeCell iso={r.created_at} /></TableCell>
+                      <TableCell className="text-right">
+                        <DeleteRowButton onClick={() => del.setConfirmRow(r)} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
-          )}
-        </>
-      )}
-    </Section>
+            {hasMore && (
+              <div className="border-t border-border p-3 text-center">
+                <Button variant="outline" size="sm" onClick={loadMore} disabled={more}>
+                  {more ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Load more
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+      </Section>
+      <DeleteConfirmDialog
+        open={!!del.confirmRow}
+        busy={del.busy}
+        onCancel={() => del.setConfirmRow(null)}
+        onConfirm={del.handleConfirm}
+        title="Delete this login record?"
+        description="This permanently removes the login event. Cannot be undone."
+      />
+    </>
   );
 }
 
 // ---------- 3. plan generations ----------
 function PlanGenerationsSection() {
   const [selected, setSelected] = useState<PlanRow | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<PlanRow | null>(null);
   const { rows, loading, more, hasMore, loadMore, refresh, setRows } = useLoadMore<PlanRow>(
     async (offset, limit) => {
       const { data, count } = await supabase
@@ -350,15 +435,7 @@ function PlanGenerationsSection() {
       return { data: (data ?? []) as PlanRow[], total: count };
     },
   );
-
-  async function handleDelete(row: PlanRow) {
-    const { error } = await supabase.from("plans").delete().eq("id", row.id);
-    if (error) { toast.error(`Delete failed: ${error.message}`); return; }
-    await auditLog("plan.delete", row.id, { city: row.city, user_email: row.user_email });
-    toast.success("Submission deleted");
-    setConfirmDelete(null);
-    setRows((r) => r.filter((x) => x.id !== row.id));
-  }
+  const del = useAdminDelete<PlanRow>("plans", setRows, "plan.delete", (r) => r.id);
 
   return (
     <>
@@ -409,12 +486,9 @@ function PlanGenerationsSection() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button
-                          size="sm" variant="ghost"
-                          onClick={(e) => { e.stopPropagation(); setConfirmDelete(r); }}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        <DeleteRowButton
+                          onClick={(e) => { e.stopPropagation(); del.setConfirmRow(r); }}
+                        />
                       </TableCell>
                     </TableRow>
                   ))}
@@ -473,27 +547,21 @@ function PlanGenerationsSection() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={!!confirmDelete} onOpenChange={(o) => !o && setConfirmDelete(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete this submission?</DialogTitle>
-            <DialogDescription>
-              This permanently removes the plan record. This cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmDelete(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={() => confirmDelete && handleDelete(confirmDelete)}>Delete</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteConfirmDialog
+        open={!!del.confirmRow}
+        busy={del.busy}
+        onCancel={() => del.setConfirmRow(null)}
+        onConfirm={del.handleConfirm}
+        title="Delete this submission?"
+        description="This permanently removes the plan record. Cannot be undone."
+      />
     </>
   );
 }
 
 // ---------- 4. errors ----------
 function ErrorsSection() {
-  const { rows, loading, more, hasMore, loadMore, refresh } = useLoadMore<ErrorRow>(
+  const { rows, loading, more, hasMore, loadMore, refresh, setRows } = useLoadMore<ErrorRow>(
     async (offset, limit) => {
       const { data, count } = await supabase
         .from("error_logs")
@@ -503,55 +571,70 @@ function ErrorsSection() {
       return { data: (data ?? []) as ErrorRow[], total: count };
     },
   );
+  const del = useAdminDelete<ErrorRow>("error_logs", setRows, "error_log.delete", (r) => r.source);
 
   return (
-    <Section
-      icon={AlertTriangle}
-      title="Error logs"
-      description="Recent frontend and API failures, newest first."
-      action={<Button variant="outline" size="sm" onClick={refresh}>Refresh</Button>}
-    >
-      {loading ? (
-        <TableSkeleton rows={4} cols={3} />
-      ) : rows.length === 0 ? (
-        <EmptyState>No errors logged</EmptyState>
-      ) : (
-        <>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[160px]">When</TableHead>
-                  <TableHead className="w-[180px]">Source</TableHead>
-                  <TableHead>Message</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell><TimeCell iso={r.created_at} /></TableCell>
-                    <TableCell>
-                      <Badge variant="destructive" className="font-mono text-[10px]">
-                        {r.source}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="max-w-md break-words text-sm">{r.message}</TableCell>
+    <>
+      <Section
+        icon={AlertTriangle}
+        title="Error logs"
+        description="Recent frontend and API failures, newest first."
+        action={<Button variant="outline" size="sm" onClick={refresh}>Refresh</Button>}
+      >
+        {loading ? (
+          <TableSkeleton rows={4} cols={3} />
+        ) : rows.length === 0 ? (
+          <EmptyState>No errors logged</EmptyState>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[160px]">When</TableHead>
+                    <TableHead className="w-[180px]">Source</TableHead>
+                    <TableHead>Message</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-          {hasMore && (
-            <div className="border-t border-border p-3 text-center">
-              <Button variant="outline" size="sm" onClick={loadMore} disabled={more}>
-                {more ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Load more
-              </Button>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell><TimeCell iso={r.created_at} /></TableCell>
+                      <TableCell>
+                        <Badge variant="destructive" className="font-mono text-[10px]">
+                          {r.source}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="max-w-md break-words text-sm">{r.message}</TableCell>
+                      <TableCell className="text-right">
+                        <DeleteRowButton onClick={() => del.setConfirmRow(r)} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
-          )}
-        </>
-      )}
-    </Section>
+            {hasMore && (
+              <div className="border-t border-border p-3 text-center">
+                <Button variant="outline" size="sm" onClick={loadMore} disabled={more}>
+                  {more ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Load more
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+      </Section>
+      <DeleteConfirmDialog
+        open={!!del.confirmRow}
+        busy={del.busy}
+        onCancel={() => del.setConfirmRow(null)}
+        onConfirm={del.handleConfirm}
+        title="Delete this error log?"
+        description="This permanently removes the error record. Cannot be undone."
+      />
+    </>
   );
 }
 
@@ -559,7 +642,7 @@ function ErrorsSection() {
 type ContactRow = { id: string; created_at: string; name: string; email: string; message: string };
 function ContactMessagesSection() {
   const [selected, setSelected] = useState<ContactRow | null>(null);
-  const { rows, loading, more, hasMore, loadMore, refresh } = useLoadMore<ContactRow>(
+  const { rows, loading, more, hasMore, loadMore, refresh, setRows } = useLoadMore<ContactRow>(
     async (offset, limit) => {
       const { data, count } = await supabase
         .from("contact_messages")
@@ -569,6 +652,7 @@ function ContactMessagesSection() {
       return { data: (data ?? []) as ContactRow[], total: count };
     },
   );
+  const del = useAdminDelete<ContactRow>("contact_messages", setRows, "contact_message.delete", (r) => r.email);
 
   return (
     <>
@@ -592,6 +676,7 @@ function ContactMessagesSection() {
                     <TableHead>Name</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Message</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -601,6 +686,11 @@ function ContactMessagesSection() {
                       <TableCell className="font-medium">{r.name}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{r.email}</TableCell>
                       <TableCell className="max-w-md truncate text-sm">{r.message}</TableCell>
+                      <TableCell className="text-right">
+                        <DeleteRowButton
+                          onClick={(e) => { e.stopPropagation(); del.setConfirmRow(r); }}
+                        />
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -640,6 +730,15 @@ function ContactMessagesSection() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <DeleteConfirmDialog
+        open={!!del.confirmRow}
+        busy={del.busy}
+        onCancel={() => del.setConfirmRow(null)}
+        onConfirm={del.handleConfirm}
+        title="Delete this contact message?"
+        description="This permanently removes the message. Cannot be undone."
+      />
     </>
   );
 }
@@ -647,7 +746,7 @@ function ContactMessagesSection() {
 
 // ---------- 5. audit log ----------
 function AuditLogSection() {
-  const { rows, loading, more, hasMore, loadMore, refresh } = useLoadMore<AuditRow>(
+  const { rows, loading, more, hasMore, loadMore, refresh, setRows } = useLoadMore<AuditRow>(
     async (offset, limit) => {
       const { data, count } = await supabase
         .from("admin_audit_log")
@@ -657,68 +756,82 @@ function AuditLogSection() {
       return { data: (data ?? []) as AuditRow[], total: count };
     },
   );
+  const del = useAdminDelete<AuditRow>("admin_audit_log", setRows, "audit_log.delete", (r) => r.action);
 
   return (
-    <Section
-      icon={ScrollText}
-      title="Admin audit log"
-      description="Every admin action (walkthrough replays, deletions, role changes) is recorded here."
-      action={<Button variant="outline" size="sm" onClick={refresh}>Refresh</Button>}
-    >
-      {loading ? (
-        <TableSkeleton rows={4} cols={4} />
-      ) : rows.length === 0 ? (
-        <EmptyState>No admin actions recorded yet</EmptyState>
-      ) : (
-        <>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>When</TableHead>
-                  <TableHead>Actor</TableHead>
-                  <TableHead>Action</TableHead>
-                  <TableHead>Target</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell><TimeCell iso={r.created_at} /></TableCell>
-                    <TableCell className="text-sm">{r.actor_email}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="font-mono text-[10px]">{r.action}</Badge>
-                    </TableCell>
-                    <TableCell className="max-w-[240px] truncate font-mono text-xs text-muted-foreground">
-                      {r.target ?? "—"}
-                    </TableCell>
+    <>
+      <Section
+        icon={ScrollText}
+        title="Admin audit log"
+        description="Every admin action (walkthrough replays, deletions, role changes) is recorded here."
+        action={<Button variant="outline" size="sm" onClick={refresh}>Refresh</Button>}
+      >
+        {loading ? (
+          <TableSkeleton rows={4} cols={4} />
+        ) : rows.length === 0 ? (
+          <EmptyState>No admin actions recorded yet</EmptyState>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>When</TableHead>
+                    <TableHead>Actor</TableHead>
+                    <TableHead>Action</TableHead>
+                    <TableHead>Target</TableHead>
+                    <TableHead className="text-right">Action</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-          {hasMore && (
-            <div className="border-t border-border p-3 text-center">
-              <Button variant="outline" size="sm" onClick={loadMore} disabled={more}>
-                {more ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                Load more
-              </Button>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((r) => (
+                    <TableRow key={r.id}>
+                      <TableCell><TimeCell iso={r.created_at} /></TableCell>
+                      <TableCell className="text-sm">{r.actor_email}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="font-mono text-[10px]">{r.action}</Badge>
+                      </TableCell>
+                      <TableCell className="max-w-[240px] truncate font-mono text-xs text-muted-foreground">
+                        {r.target ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DeleteRowButton onClick={() => del.setConfirmRow(r)} />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
-          )}
-        </>
-      )}
-    </Section>
+            {hasMore && (
+              <div className="border-t border-border p-3 text-center">
+                <Button variant="outline" size="sm" onClick={loadMore} disabled={more}>
+                  {more ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Load more
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+      </Section>
+      <DeleteConfirmDialog
+        open={!!del.confirmRow}
+        busy={del.busy}
+        onCancel={() => del.setConfirmRow(null)}
+        onConfirm={del.handleConfirm}
+        title="Delete this audit entry?"
+        description="This permanently removes the audit log entry. Cannot be undone."
+      />
+    </>
   );
 }
 
-// ---------- 6. role management ----------
+// ---------- 6. role management (admins only) ----------
 function RoleManagementSection() {
-  const [users, setUsers] = useState<AdminUser[] | null>(null);
-  const [adminIds, setAdminIds] = useState<Set<string>>(new Set());
+  const [admins, setAdmins] = useState<AdminUser[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [grantEmail, setGrantEmail] = useState("");
   const [granting, setGranting] = useState(false);
-  const [confirm, setConfirm] = useState<{ user: AdminUser; grant: boolean } | null>(null);
+  const [confirm, setConfirm] = useState<AdminUser | null>(null);
   const { user: me } = useIsAdmin();
 
   const load = useCallback(async () => {
@@ -726,13 +839,14 @@ function RoleManagementSection() {
     try {
       const [{ data: usersData, error: usersErr }, { data: rolesData }] = await Promise.all([
         supabase.rpc("admin_list_users"),
-        supabase.from("user_roles").select("user_id, role").eq("role", "admin"),
+        supabase.from("user_roles").select("user_id").eq("role", "admin"),
       ]);
       if (usersErr) throw usersErr;
-      setUsers((usersData ?? []) as AdminUser[]);
-      setAdminIds(new Set((rolesData ?? []).map((r) => r.user_id)));
+      const adminIds = new Set((rolesData ?? []).map((r) => r.user_id));
+      const all = (usersData ?? []) as AdminUser[];
+      setAdmins(all.filter((u) => adminIds.has(u.id)));
     } catch (e) {
-      toast.error("Failed to load users");
+      toast.error("Failed to load admins");
       console.error(e);
     } finally {
       setLoading(false);
@@ -763,23 +877,16 @@ function RoleManagementSection() {
     }
   }
 
-  async function toggle(user: AdminUser, makeAdmin: boolean) {
+  async function revoke(user: AdminUser) {
     try {
-      if (makeAdmin) {
-        const { error } = await supabase.from("user_roles").insert({ user_id: user.id, role: "admin" });
-        if (error && !/duplicate/i.test(error.message)) throw error;
-        await auditLog("role.grant", user.email, { user_id: user.id });
-        toast.success(`Granted admin to ${user.email}`);
-      } else {
-        const { error } = await supabase.from("user_roles").delete().eq("user_id", user.id).eq("role", "admin");
-        if (error) throw error;
-        await auditLog("role.revoke", user.email, { user_id: user.id });
-        toast.success(`Revoked admin from ${user.email}`);
-      }
+      const { error } = await supabase.from("user_roles").delete().eq("user_id", user.id).eq("role", "admin");
+      if (error) throw error;
+      await auditLog("role.revoke", user.email, { user_id: user.id });
+      toast.success(`Revoked admin from ${user.email}`);
       setConfirm(null);
       await load();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update role");
+      toast.error(err instanceof Error ? err.message : "Failed to revoke role");
     }
   }
 
@@ -788,11 +895,11 @@ function RoleManagementSection() {
       <Section
         icon={UserCog}
         title="Admin role management"
-        description="Grant or revoke the admin role. Every change is written to the audit log."
+        description="Only current admins are shown. Grant new admins by email above."
       >
         <form onSubmit={grantByEmail} className="flex flex-col gap-2 border-b border-border p-4 sm:flex-row">
           <Input
-            type="email" required placeholder="grant admin by email"
+            type="email" required placeholder="Grant admin by email (e.g. name@example.com)"
             value={grantEmail}
             onChange={(e) => setGrantEmail(e.target.value)}
             className="sm:max-w-sm"
@@ -803,10 +910,10 @@ function RoleManagementSection() {
           </Button>
         </form>
 
-        {loading || !users ? (
-          <TableSkeleton rows={4} cols={3} />
-        ) : users.length === 0 ? (
-          <EmptyState>No users found</EmptyState>
+        {loading || !admins ? (
+          <TableSkeleton rows={3} cols={3} />
+        ) : admins.length === 0 ? (
+          <EmptyState>No admins yet — grant one by email above.</EmptyState>
         ) : (
           <div className="overflow-x-auto">
             <Table>
@@ -814,13 +921,11 @@ function RoleManagementSection() {
                 <TableRow>
                   <TableHead>Email</TableHead>
                   <TableHead>Last sign-in</TableHead>
-                  <TableHead>Role</TableHead>
                   <TableHead className="text-right">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {users.map((u) => {
-                  const isUserAdmin = adminIds.has(u.id);
+                {admins.map((u) => {
                   const isSelf = me?.id === u.id;
                   return (
                     <TableRow key={u.id}>
@@ -830,31 +935,14 @@ function RoleManagementSection() {
                       <TableCell>
                         {u.last_sign_in_at ? <TimeCell iso={u.last_sign_in_at} /> : <span className="text-muted-foreground">—</span>}
                       </TableCell>
-                      <TableCell>
-                        {isUserAdmin ? (
-                          <Badge className="bg-accent text-accent-foreground hover:bg-accent">admin</Badge>
-                        ) : (
-                          <Badge variant="secondary">user</Badge>
-                        )}
-                      </TableCell>
                       <TableCell className="text-right">
-                        {isUserAdmin ? (
-                          <Button
-                            size="sm" variant="outline"
-                            disabled={isSelf}
-                            onClick={() => setConfirm({ user: u, grant: false })}
-                          >
-                            Revoke
-                          </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            className="bg-deep text-deep-foreground hover:bg-deep/90"
-                            onClick={() => setConfirm({ user: u, grant: true })}
-                          >
-                            Make admin
-                          </Button>
-                        )}
+                        <Button
+                          size="sm" variant="outline"
+                          disabled={isSelf}
+                          onClick={() => setConfirm(u)}
+                        >
+                          Revoke
+                        </Button>
                       </TableCell>
                     </TableRow>
                   );
@@ -868,26 +956,104 @@ function RoleManagementSection() {
       <Dialog open={!!confirm} onOpenChange={(o) => !o && setConfirm(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>
-              {confirm?.grant ? "Grant admin role" : "Revoke admin role"}
-            </DialogTitle>
+            <DialogTitle>Revoke admin role</DialogTitle>
             <DialogDescription>
-              {confirm?.grant
-                ? `${confirm?.user.email} will get full access to the admin panel.`
-                : `${confirm?.user.email} will lose access to the admin panel.`}
+              {confirm?.email} will lose access to the admin panel.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setConfirm(null)}>Cancel</Button>
             <Button
-              variant={confirm?.grant ? "default" : "destructive"}
-              onClick={() => confirm && toggle(confirm.user, confirm.grant)}
+              variant="destructive"
+              onClick={() => confirm && revoke(confirm)}
             >
-              {confirm?.grant ? "Grant" : "Revoke"}
+              Revoke
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+// ---------- 7. danger zone ----------
+function DangerZoneSection() {
+  const wipe = useServerFn(adminWipeAll);
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function handleWipe() {
+    if (typed !== "DELETE") return;
+    setBusy(true);
+    try {
+      await wipe({});
+      toast.success("All data wiped");
+      setOpen(false);
+      setTyped("");
+      // Reload so every section re-fetches its now-empty tables.
+      window.location.reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Wipe failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="mt-16 border-t-2 border-destructive/40 pt-10">
+      <div className="rounded-2xl border-2 border-destructive/60 bg-destructive/5 p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="flex items-center gap-2 font-display text-xl font-bold text-destructive">
+              <AlertTriangle className="h-5 w-5" /> Danger zone
+            </h2>
+            <p className="mt-2 max-w-xl text-sm text-muted-foreground">
+              Permanently deletes <strong>all plans, logins, contact messages, and error logs</strong>.
+              This action is logged in the audit log but cannot be undone.
+            </p>
+          </div>
+          <Button
+            variant="destructive"
+            size="lg"
+            onClick={() => setOpen(true)}
+            className="shrink-0"
+          >
+            <Trash2 className="mr-2 h-4 w-4" /> Delete all data
+          </Button>
+        </div>
+      </div>
+
+      <Dialog open={open} onOpenChange={(o) => { if (!o) { setOpen(false); setTyped(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Delete all data?</DialogTitle>
+            <DialogDescription>
+              This will permanently wipe plans, login events, contact messages, and error logs.
+              Type <strong>DELETE</strong> below to confirm.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            autoFocus
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            placeholder="Type DELETE to confirm"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setOpen(false); setTyped(""); }} disabled={busy}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={typed !== "DELETE" || busy}
+              onClick={handleWipe}
+            >
+              {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              Permanently delete everything
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </section>
   );
 }

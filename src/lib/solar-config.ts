@@ -1,9 +1,8 @@
 // ============================================================================
-// EDIT THIS: External AI webhook URL for generating solar plans.
+// External AI webhook URL for generating solar plans.
 // The "Get a Plan" form POSTs the form data here as JSON and expects a JSON
-// response with: recommended_system_kw, recommended_battery, estimated_cost_low,
-// estimated_cost_high, estimated_savings, payback_period, explanation_text.
-// If empty or the request fails, a local heuristic fallback is used so the
+// response matching PlanResult (component-based schema with real product names).
+// If the webhook is empty or fails, a local heuristic fallback is used so the
 // app still works end-to-end during development.
 // ============================================================================
 export const WEBHOOK_URL = "https://stout-mandate-estrogen.ngrok-free.dev/webhook/SolarLeb";
@@ -13,87 +12,98 @@ export type PlanInput = {
   monthly_bill: number;
   generator_hours: number;
   property_type: string;
-  monthly_kwh?: number | null;
+  amps_needed: number;
+  voltage_layout: "24V" | "48V";
 };
 
 export type PlanResult = {
   system_size_kw: number;
-  battery_capacity_kwh: number;
-  battery_chemistry: string;
-  panel_cost: number;
-  battery_cost: number;
-  installation_labor_cost: number;
+  amps_needed: number;
+  voltage_layout: string;
+
+  panel_brand: string;
+  panel_watt_each: number;
+  num_panels: number;
+  panel_unit_price: number;
+  panel_total_cost: number;
+
+  battery_brand: string;
+  battery_ah_each: number;
+  num_battery_units: number;
+  battery_unit_price: number;
+  battery_total_cost: number;
+
+  inverter_name: string;
+  inverter_total_cost: number;
+
+  installation_misc_cost: number;
   total_installation_cost: number;
+
   monthly_savings: number;
   payback_years: number;
   payback_months: number;
-  recommended_panel_type: string;
-  recommended_panel_reason: string;
-  recommended_battery_type: string;
-  recommended_battery_reason: string;
   summary: string;
 };
 
 
-// Local heuristic — used as a fallback if WEBHOOK_URL is empty or fails.
+// Local heuristic fallback — used if WEBHOOK_URL is empty or fails.
 function localEstimate(input: PlanInput): PlanResult {
-  // Estimate monthly kWh from bill if not provided (Lebanon avg blended rate ~$0.20/kWh + generator).
-  const kwh = input.monthly_kwh && input.monthly_kwh > 0
-    ? input.monthly_kwh
-    : Math.max(150, Math.round(input.monthly_bill / 0.22));
-
+  const kwh = Math.max(150, Math.round(input.monthly_bill / 0.22));
   const dailyKwh = kwh / 30;
   const sunHours = input.city === "Bekaa" || input.city === "South Lebanon" ? 5.5 : 5.0;
   const systemKw = Math.max(1.5, Math.round((dailyKwh / sunHours) * 1.15 * 10) / 10);
 
-  // Battery sized for evening use ~ 40-60% of daily consumption
-  const batteryKwh = Math.max(2.4, Math.round(dailyKwh * 0.5 * 10) / 10);
-  const batteryChemistry = "LiFePO₄";
+  const panelWatt = 550;
+  const numPanels = Math.max(2, Math.ceil((systemKw * 1000) / panelWatt));
+  const panelUnitPrice = 110;
+  const panelTotal = numPanels * panelUnitPrice;
 
-  // Cost model (Lebanon market, 2024-2025)
-  const panelCost = Math.round(systemKw * 1000);
-  const batteryCost = Math.round(batteryKwh * 500);
-  const laborCost = Math.round(systemKw * 150 + 200);
-  const totalCost = panelCost + batteryCost + laborCost;
+  const batteryAh = 200;
+  const numBatteries = input.voltage_layout === "48V" ? 4 : 2;
+  const batteryUnitPrice = 650;
+  const batteryTotal = numBatteries * batteryUnitPrice;
 
-  // Savings vs current bill + generator diesel usage
+  const inverterKw = Math.max(3, Math.ceil(systemKw));
+  const inverterName = `Deye ${inverterKw}kW ${input.voltage_layout} Hybrid Inverter`;
+  const inverterCost = inverterKw * 350;
+
+  const miscCost = Math.round(systemKw * 120 + 200);
+  const totalCost = panelTotal + batteryTotal + inverterCost + miscCost;
+
   const dieselMonthly = input.generator_hours * 30 * 1.2;
   const currentMonthly = input.monthly_bill + dieselMonthly;
   const monthlySavings = Math.round(currentMonthly * 0.85);
 
-  const paybackMonthsTotal = monthlySavings > 0
-    ? Math.round(totalCost / monthlySavings)
-    : 120;
+  const paybackMonthsTotal = monthlySavings > 0 ? Math.round(totalCost / monthlySavings) : 120;
   const paybackYears = Math.floor(paybackMonthsTotal / 12);
   const paybackMonths = paybackMonthsTotal % 12;
 
-  const panelType = "Monocrystalline";
-  const panelReason =
-    `Monocrystalline panels deliver ~20-22% efficiency in Lebanon's high heat and produce more energy per m² than polycrystalline, which matters on limited rooftops.`;
-  const batteryReason =
-    `LiFePO₄ handles 40°C summers and daily deep cycling far better than lead-acid, with ~10x the cycle life and no ventilation requirements.`;
-
   const summary =
-    `Based on your ${input.property_type.toLowerCase()} in ${input.city} with a $${input.monthly_bill} monthly bill ` +
-    `and ${input.generator_hours} generator hours per day, a ${systemKw} kW ${panelType.toLowerCase()} array paired with a ${batteryKwh} kWh ${batteryChemistry} battery ` +
-    `will cover ~85% of your annual energy needs at ${sunHours} peak sun hours. ` +
-    `Expected monthly savings: $${monthlySavings.toLocaleString()} vs your current grid + generator combo.`;
+    `For your ${input.property_type.toLowerCase()} in ${input.city}, we recommend ${numPanels} Jinko ${panelWatt}W panels ` +
+    `paired with ${numBatteries} Pylontech ${batteryAh}Ah lithium batteries on a ${input.voltage_layout} setup, driven by a ${inverterName}. ` +
+    `This covers roughly ${input.amps_needed}A of demand and saves an estimated $${monthlySavings.toLocaleString()} per month versus your current grid + generator combo.`;
 
   return {
     system_size_kw: systemKw,
-    battery_capacity_kwh: batteryKwh,
-    battery_chemistry: batteryChemistry,
-    panel_cost: panelCost,
-    battery_cost: batteryCost,
-    installation_labor_cost: laborCost,
+    amps_needed: input.amps_needed,
+    voltage_layout: input.voltage_layout,
+    panel_brand: "Jinko",
+    panel_watt_each: panelWatt,
+    num_panels: numPanels,
+    panel_unit_price: panelUnitPrice,
+    panel_total_cost: panelTotal,
+    battery_brand: "Pylontech",
+    battery_ah_each: batteryAh,
+    num_battery_units: numBatteries,
+    battery_unit_price: batteryUnitPrice,
+    battery_total_cost: batteryTotal,
+    inverter_name: inverterName,
+    inverter_total_cost: inverterCost,
+    installation_misc_cost: miscCost,
     total_installation_cost: totalCost,
     monthly_savings: monthlySavings,
     payback_years: paybackYears,
     payback_months: paybackMonths,
-    recommended_panel_type: panelType,
-    recommended_panel_reason: panelReason,
-    recommended_battery_type: `${batteryChemistry} (Lithium Iron Phosphate)`,
-    recommended_battery_reason: batteryReason,
     summary,
   };
 }

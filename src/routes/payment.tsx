@@ -1,13 +1,14 @@
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Lock, ShieldCheck, CheckCircle2, CreditCard } from "lucide-react";
+import { Loader2, Lock, ShieldCheck, CheckCircle2, CreditCard, Smartphone } from "lucide-react";
 import { SiteNav, SiteFooter } from "@/components/site-nav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { auditLog } from "@/lib/admin";
 
 type Plan = {
   id: string;
@@ -22,6 +23,12 @@ type Plan = {
 };
 
 type PaymentSearch = { plan?: string };
+
+// Placeholder Whish Money receiving details — replace with real details later.
+const WHISH_PHONE = "+961 71 234 567";
+const WHISH_QR_SRC = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
+  `whish:pay?to=${WHISH_PHONE}&amount=25&currency=USD`,
+)}`;
 
 export const Route = createFileRoute("/payment")({
   ssr: false,
@@ -42,12 +49,11 @@ function PaymentPage() {
   const search = useSearch({ from: "/payment" });
   const navigate = useNavigate();
   const [plan, setPlan] = useState<Plan | null>(null);
-  const [status, setStatus] = useState<"loading" | "ready" | "processing" | "done" | "error">("loading");
+  const [status, setStatus] = useState<"loading" | "ready" | "processing" | "done" | "pending" | "error">("loading");
   const [lockedUntil, setLockedUntil] = useState<string | null>(null);
 
   const [card, setCard] = useState({ name: "", number: "", exp: "", cvc: "" });
   const [method, setMethod] = useState<"card" | "whish">("card");
-  const [whishPhone, setWhishPhone] = useState("");
 
   useEffect(() => {
     if (authLoading) return;
@@ -74,21 +80,13 @@ function PaymentPage() {
       });
   }, [authLoading, user, search.plan, navigate]);
 
-  async function handlePay(e: React.FormEvent) {
+  async function handleCardPay(e: React.FormEvent) {
     e.preventDefault();
     if (!plan) return;
-    if (method === "card") {
-      if (!card.name || card.number.replace(/\s/g, "").length < 12 || !card.exp || card.cvc.length < 3) {
-        toast.error("Please fill in valid card details");
-        return;
-      }
-    } else {
-      if (whishPhone.replace(/\D/g, "").length < 7) {
-        toast.error("Please enter a valid phone number");
-        return;
-      }
+    if (!card.name || card.number.replace(/\s/g, "").length < 12 || !card.exp || card.cvc.length < 3) {
+      toast.error("Please fill in valid card details");
+      return;
     }
-
 
     setStatus("processing");
     // Mock payment processing — replace with Stripe integration later.
@@ -115,6 +113,22 @@ function PaymentPage() {
     toast.success("Price locked in");
   }
 
+  async function handleWhishConfirm() {
+    if (!plan) return;
+    setStatus("processing");
+    // Mark as pending verification: keep is_locked = false, but write an audit
+    // entry so admins see it and can confirm the transfer manually.
+    await auditLog("whish_payment.pending", plan.id, {
+      user_email: user?.email ?? null,
+      amount_usd: 25,
+      city: plan.city,
+    });
+    // Also flag on the plan itself using locked_until = null + is_locked = false
+    // (default) — the audit log is the source of truth for admin follow-up.
+    setStatus("pending");
+    toast.success("Marked as pending — an admin will verify shortly");
+  }
+
   if (status === "loading" || authLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -135,6 +149,31 @@ function PaymentPage() {
             <Link to="/plan">Get a plan</Link>
           </Button>
         </div>
+      </div>
+    );
+  }
+
+  if (status === "pending") {
+    return (
+      <div className="min-h-screen bg-background">
+        <SiteNav />
+        <div className="mx-auto max-w-2xl px-4 py-16">
+          <div className="rounded-2xl border-2 border-accent bg-card p-10 text-center shadow-glow">
+            <div className="mx-auto mb-4 inline-flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
+              <Smartphone className="h-8 w-8 text-accent" />
+            </div>
+            <h1 className="font-display text-3xl font-bold text-foreground">Thanks — we'll verify shortly</h1>
+            <p className="mt-3 text-muted-foreground">
+              We've noted your Whish Money payment. Once our team confirms the transfer, your price will be locked
+              for 30 days and you'll receive an email confirmation.
+            </p>
+            <div className="mt-8 flex justify-center gap-3">
+              <Button asChild variant="outline"><Link to="/dashboard">Go to dashboard</Link></Button>
+              <Button asChild className="bg-deep text-deep-foreground hover:bg-deep/90"><Link to="/">Home</Link></Button>
+            </div>
+          </div>
+        </div>
+        <SiteFooter />
       </div>
     );
   }
@@ -193,6 +232,31 @@ function PaymentPage() {
             </div>
           </div>
 
+          {method === "whish" && (
+            <div className="mt-6 rounded-2xl border-2 border-accent bg-card p-6 shadow-card">
+              <div className="flex items-center gap-2">
+                <Smartphone className="h-5 w-5 text-accent" />
+                <h3 className="font-display text-lg font-bold text-foreground">Send $25 via Whish Money</h3>
+              </div>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Scan the QR code or send <strong className="text-foreground">$25</strong> to the number below via Whish Money, then confirm below.
+              </p>
+
+              <div className="mt-4 flex flex-col items-center gap-3 rounded-xl bg-secondary/60 p-4">
+                <img
+                  src={WHISH_QR_SRC}
+                  alt="Whish Money payment QR code"
+                  className="h-44 w-44 rounded-lg bg-background p-2"
+                />
+                <div className="text-center">
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground">Send to</p>
+                  <p className="mt-1 font-display text-xl font-bold text-foreground">{WHISH_PHONE}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">(placeholder — final number coming soon)</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="mt-6 rounded-2xl border border-accent/40 bg-secondary/40 p-5">
             <div className="flex items-start gap-3">
               <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
@@ -226,7 +290,7 @@ function PaymentPage() {
               <Button asChild className="mt-4"><Link to="/dashboard">Back to dashboard</Link></Button>
             </div>
           ) : (
-            <form onSubmit={handlePay} className="space-y-4">
+            <div className="space-y-4">
               <div className="grid grid-cols-2 gap-2 rounded-lg bg-secondary/60 p-1">
                 <button
                   type="button"
@@ -249,7 +313,7 @@ function PaymentPage() {
               </div>
 
               {method === "card" ? (
-                <>
+                <form onSubmit={handleCardPay} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="card-name">Name on card</Label>
                     <Input id="card-name" value={card.name} onChange={(e) => setCard((c) => ({ ...c, name: e.target.value }))} required maxLength={100} />
@@ -289,45 +353,34 @@ function PaymentPage() {
                       <><Lock className="mr-2 h-4 w-4" /> Pay $25 & lock in price</>
                     )}
                   </Button>
-                </>
+                </form>
               ) : (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="whish-phone">Whish Money phone number</Label>
-                    <Input
-                      id="whish-phone"
-                      type="tel"
-                      inputMode="tel"
-                      placeholder="+961 70 000 000"
-                      value={whishPhone}
-                      onChange={(e) => setWhishPhone(e.target.value)}
-                      required
-                      maxLength={20}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      We'll send a $25 payment request to this number via Whish Money.
-                    </p>
+                <div className="space-y-4">
+                  <div className="rounded-xl bg-secondary/60 p-4 text-sm text-muted-foreground">
+                    Payment details are shown beside your plan summary on the left. Once you've completed the
+                    transfer in the Whish Money app, tap the button below and we'll verify it manually.
                   </div>
 
                   <Button
-                    type="submit"
+                    type="button"
                     size="lg"
+                    onClick={handleWhishConfirm}
                     disabled={status === "processing"}
                     className="w-full bg-[#e30613] text-white font-semibold hover:bg-[#c80511]"
                   >
                     {status === "processing" ? (
-                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending request...</>
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Recording...</>
                     ) : (
-                      <>Send Payment Request — $25</>
+                      <><CheckCircle2 className="mr-2 h-4 w-4" /> I've sent the payment</>
                     )}
                   </Button>
-                </>
+                </div>
               )}
 
               <p className="text-center text-xs text-muted-foreground">
                 Demo mode — no real charge is made.
               </p>
-            </form>
+            </div>
           )}
 
         </div>
