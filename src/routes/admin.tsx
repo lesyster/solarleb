@@ -555,6 +555,96 @@ function ErrorsSection() {
   );
 }
 
+// ---------- contact messages ----------
+type ContactRow = { id: string; created_at: string; name: string; email: string; message: string };
+function ContactMessagesSection() {
+  const [selected, setSelected] = useState<ContactRow | null>(null);
+  const { rows, loading, more, hasMore, loadMore, refresh } = useLoadMore<ContactRow>(
+    async (offset, limit) => {
+      const { data, count } = await supabase
+        .from("contact_messages")
+        .select("id, created_at, name, email, message", { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range(offset, offset + limit - 1);
+      return { data: (data ?? []) as ContactRow[], total: count };
+    },
+  );
+
+  return (
+    <>
+      <Section
+        icon={Mail}
+        title="Contact messages"
+        description="Messages submitted through the Contact form."
+        action={<Button variant="outline" size="sm" onClick={refresh}>Refresh</Button>}
+      >
+        {loading ? (
+          <TableSkeleton rows={4} cols={3} />
+        ) : rows.length === 0 ? (
+          <EmptyState>No contact messages yet</EmptyState>
+        ) : (
+          <>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>When</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Message</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((r) => (
+                    <TableRow key={r.id} className="cursor-pointer" onClick={() => setSelected(r)}>
+                      <TableCell><TimeCell iso={r.created_at} /></TableCell>
+                      <TableCell className="font-medium">{r.name}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{r.email}</TableCell>
+                      <TableCell className="max-w-md truncate text-sm">{r.message}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            {hasMore && (
+              <div className="border-t border-border p-3 text-center">
+                <Button variant="outline" size="sm" onClick={loadMore} disabled={more}>
+                  {more ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Load more
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+      </Section>
+
+      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Message from {selected?.name}</DialogTitle>
+            {selected && (
+              <DialogDescription>
+                {selected.email} · {fullDate(selected.created_at)}
+              </DialogDescription>
+            )}
+          </DialogHeader>
+          {selected && (
+            <p className="whitespace-pre-wrap rounded-lg bg-secondary/60 p-4 text-sm">{selected.message}</p>
+          )}
+          <DialogFooter>
+            {selected && (
+              <Button asChild variant="outline">
+                <a href={`mailto:${selected.email}`}>Reply via email</a>
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+
 // ---------- 5. audit log ----------
 function AuditLogSection() {
   const { rows, loading, more, hasMore, loadMore, refresh } = useLoadMore<AuditRow>(
