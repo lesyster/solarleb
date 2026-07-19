@@ -2,9 +2,10 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import {
-  Shield, RefreshCw, AlertTriangle, Users, LogIn, FileText, ScrollText,
-  UserCog, Loader2, Eye, Trash2, Plus,
+  Shield, RefreshCw, AlertTriangle, LogIn, FileText, ScrollText,
+  UserCog, Loader2, Eye, Trash2, Plus, Mail,
 } from "lucide-react";
+
 import { supabase } from "@/integrations/supabase/client";
 import { useIsAdmin, auditLog, WALKTHROUGH_LOCAL_KEY, WALKTHROUGH_META_KEY } from "@/lib/admin";
 import { SiteNav, SiteFooter } from "@/components/site-nav";
