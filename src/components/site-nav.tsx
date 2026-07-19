@@ -97,6 +97,15 @@ export function SiteNav() {
                 {n.label}
               </Link>
             ))}
+            {isAdmin && (
+              <Link
+                to="/admin"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-accent-foreground hover:bg-accent/20"
+              >
+                <Shield className="h-4 w-4 text-accent" /> Admin
+              </Link>
+            )}
             {user ? (
               <>
                 <Link to="/dashboard" onClick={() => setOpen(false)} className="rounded-md px-3 py-2 text-sm font-medium text-foreground hover:bg-secondary">
@@ -117,18 +126,7 @@ export function SiteNav() {
                 Login / Signup
               </Link>
             )}
-            {isAdmin && (
-              <>
-                <div className="my-1 border-t border-border" />
-                <Link
-                  to="/admin"
-                  onClick={() => setOpen(false)}
-                  className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-accent-foreground hover:bg-secondary"
-                >
-                  <Shield className="h-4 w-4 text-accent" /> Admin
-                </Link>
-              </>
-            )}
+
           </div>
         </div>
       )}
