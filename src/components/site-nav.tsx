@@ -1,10 +1,12 @@
 import { Link } from "@tanstack/react-router";
-import { Sun, Menu, X, Shield } from "lucide-react";
+import { Menu, X, Shield } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useIsAdmin } from "@/lib/admin";
 import { supabase } from "@/integrations/supabase/client";
+import { SolarLebLogo } from "@/components/brand-icons";
+
 
 const NAV = [
   { to: "/", label: "Home" },
@@ -22,11 +24,10 @@ export function SiteNav() {
     <header className="sticky top-0 z-50 border-b border-border/60 bg-background/85 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
         <Link to="/" className="flex items-center gap-2 font-display text-lg font-bold tracking-tight text-foreground">
-          <span className="grid h-9 w-9 place-items-center rounded-lg gradient-sun shadow-glow">
-            <Sun className="h-5 w-5 text-deep" strokeWidth={2.5} />
-          </span>
+          <SolarLebLogo className="h-9 w-9" />
           SolarLeb
         </Link>
+
 
         <nav className="hidden items-center gap-1 md:flex">
           {NAV.map((n) => (
@@ -141,7 +142,7 @@ export function SiteFooter() {
       <div className="mx-auto max-w-6xl px-4 py-10 text-sm text-muted-foreground">
         <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
           <div className="flex items-center gap-2 font-display font-semibold text-foreground">
-            <Sun className="h-4 w-4 text-accent" />
+            <SolarLebLogo className="h-5 w-5" />
             SolarLeb
           </div>
           <div className="flex items-center gap-4">

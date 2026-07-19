@@ -3,7 +3,7 @@ import { Sun, ArrowRight } from "lucide-react";
 import { SiteNav, SiteFooter } from "@/components/site-nav";
 import { Button } from "@/components/ui/button";
 import { HeroIllustration } from "@/components/hero-illustration";
-import { SolarPanelSparkIcon, LockPriceIcon, SunMountainIcon } from "@/components/brand-icons";
+import { SolarPanelSparkIcon, LockPriceIcon, CedarSunIcon } from "@/components/brand-icons";
 import { ARTICLES } from "@/lib/news-articles";
 
 export const Route = createFileRoute("/")({
@@ -58,12 +58,10 @@ function Home() {
           {[
             { Icon: SolarPanelSparkIcon, title: "AI-designed system", body: "Answer 5 quick questions and get a tailored panel + battery recommendation in seconds." },
             { Icon: LockPriceIcon, title: "Price lock guarantee", body: "A $25 deposit locks in today's panel and battery prices for 30 days — fully credited to your install." },
-            { Icon: SunMountainIcon, title: "Built for Lebanon", body: "Sized for 40°C summers, dust, and long generator hours — not generic templates from abroad." },
+            { Icon: CedarSunIcon, title: "Built for Lebanon", body: "Sized for 40°C summers, dust, and long generator hours — not generic templates from abroad." },
           ].map((f) => (
             <div key={f.title} className="rounded-2xl border border-border bg-card p-6 shadow-card">
-              <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-xl gradient-sun">
-                <f.Icon className="h-6 w-6 text-deep" />
-              </div>
+              <f.Icon className="mb-4 h-16 w-16" />
               <h3 className="font-display text-lg font-semibold text-foreground">{f.title}</h3>
               <p className="mt-2 text-sm text-muted-foreground">{f.body}</p>
             </div>

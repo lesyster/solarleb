@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Mail, MapPin, MessageSquare } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { EmailIcon, LocationIcon, MessageIcon } from "@/components/brand-icons";
 import { SiteNav, SiteFooter } from "@/components/site-nav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,16 +69,12 @@ function ContactPage() {
         <div className="grid gap-8 md:grid-cols-[1fr_2fr]" data-reveal>
           <div className="space-y-6">
             <div className="rounded-2xl border border-border bg-card p-6 shadow-card">
-              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg gradient-sun">
-                <Mail className="h-5 w-5 text-deep" />
-              </div>
+              <EmailIcon className="mb-3 h-12 w-12" />
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Email</p>
-              <p className="mt-1 font-medium text-foreground">hello@solarleb.com</p>
+              <p className="mt-1 font-medium text-foreground">SolarLeb@gmail.com</p>
             </div>
             <div className="rounded-2xl border border-border bg-card p-6 shadow-card">
-              <div className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg gradient-sun">
-                <MapPin className="h-5 w-5 text-deep" />
-              </div>
+              <LocationIcon className="mb-3 h-12 w-12" />
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Serving</p>
               <p className="mt-1 font-medium text-foreground">All of Lebanon</p>
             </div>
@@ -86,9 +83,7 @@ function ContactPage() {
           <div className="rounded-2xl border border-border bg-card p-6 shadow-card md:p-8">
             {done ? (
               <div className="py-12 text-center">
-                <div className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full gradient-sun shadow-glow">
-                  <MessageSquare className="h-6 w-6 text-deep" />
-                </div>
+                <MessageIcon className="mx-auto mb-4 h-16 w-16" />
                 <h2 className="font-display text-2xl font-bold text-foreground">Message received</h2>
                 <p className="mt-2 text-muted-foreground">We'll get back to you within 24–48 hours.</p>
               </div>

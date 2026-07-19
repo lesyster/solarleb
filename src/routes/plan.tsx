@@ -1,7 +1,17 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Loader2, Sun, Battery, DollarSign, TrendingDown, Clock, Lock, Sparkles, PanelTop, BatteryCharging } from "lucide-react";
+import { Loader2, Lock, Sparkles } from "lucide-react";
+import {
+  ResultSystemIcon,
+  ResultBatteryIcon,
+  ResultDollarIcon,
+  ResultPanelIcon,
+  ResultChargeIcon,
+  ResultTrendDownIcon,
+  ResultClockIcon,
+} from "@/components/brand-icons";
+
 
 const LOADING_PHRASES = [
   "Reading your inputs...",
@@ -42,6 +52,49 @@ export const Route = createFileRoute("/plan")({
   component: PlanPage,
 });
 
+const PENDING_PLAN_KEY = "pendingPlan";
+
+type PendingPlan = {
+  input: {
+    city: string;
+    monthly_bill: number;
+    generator_hours: number;
+    property_type: string;
+    monthly_kwh: number | null;
+  };
+  result: PlanResult;
+};
+
+async function savePlanToDb(pending: PendingPlan, userId: string | null, userEmail: string | null) {
+  const { input, result: plan } = pending;
+  const { data, error } = await supabase
+    .from("plans")
+    .insert({
+      city: input.city,
+      monthly_bill: input.monthly_bill,
+      generator_hours: input.generator_hours,
+      property_type: input.property_type,
+      monthly_kwh: input.monthly_kwh,
+      recommended_system_kw: plan.system_size_kw,
+      recommended_battery: `${plan.battery_capacity_kwh} kWh ${plan.battery_chemistry}`,
+      estimated_cost_low: plan.total_installation_cost,
+      estimated_cost_high: plan.total_installation_cost,
+      estimated_savings: plan.monthly_savings,
+      payback_period: `${plan.payback_years} years ${plan.payback_months} months`,
+      explanation_text: plan.summary,
+      user_id: userId,
+      user_email: userEmail,
+      status: "success",
+    })
+    .select("id")
+    .single();
+  if (error) {
+    console.warn("[SolarLeb] failed to save plan", error);
+    return null;
+  }
+  return (data?.id as string) ?? null;
+}
+
 function PlanPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -67,6 +120,40 @@ function PlanPage() {
     property_type: "",
     monthly_kwh: "",
   });
+
+  // Restore any pending plan saved before a login redirect. If the user is now
+  // signed in, persist to their account and clear storage; otherwise leave it
+  // in place so a cancelled login still shows the plan.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = window.localStorage.getItem(PENDING_PLAN_KEY);
+    if (!raw) return;
+    let pending: PendingPlan | null = null;
+    try {
+      pending = JSON.parse(raw) as PendingPlan;
+    } catch {
+      window.localStorage.removeItem(PENDING_PLAN_KEY);
+      return;
+    }
+    if (!pending?.result) return;
+
+    setResult((prev) => prev ?? pending!.result);
+    setForm((prev) => (prev.city || prev.monthly_bill ? prev : {
+      city: pending!.input.city ?? "",
+      monthly_bill: String(pending!.input.monthly_bill ?? ""),
+      generator_hours: String(pending!.input.generator_hours ?? ""),
+      property_type: pending!.input.property_type ?? "",
+      monthly_kwh: pending!.input.monthly_kwh != null ? String(pending!.input.monthly_kwh) : "",
+    }));
+
+    if (user) {
+      void savePlanToDb(pending, user.id, user.email ?? null).then((id) => {
+        if (id) setPlanId(id);
+        window.localStorage.removeItem(PENDING_PLAN_KEY);
+        toast.success("Your plan has been saved to your account");
+      });
+    }
+  }, [user]);
 
 
 
@@ -135,13 +222,14 @@ function PlanPage() {
             generator_hours: input.generator_hours,
             property_type: input.property_type,
             monthly_kwh: input.monthly_kwh,
-            recommended_system_kw: plan.recommended_system_kw,
-            recommended_battery: plan.recommended_battery,
-            estimated_cost_low: plan.estimated_cost_low,
-            estimated_cost_high: plan.estimated_cost_high,
-            estimated_savings: plan.estimated_savings,
-            payback_period: plan.payback_period,
-            explanation_text: plan.explanation_text,
+            recommended_system_kw: plan.system_size_kw,
+            recommended_battery: `${plan.battery_capacity_kwh} kWh ${plan.battery_chemistry}`,
+            estimated_cost_low: plan.total_installation_cost,
+            estimated_cost_high: plan.total_installation_cost,
+            estimated_savings: plan.monthly_savings,
+            payback_period: `${plan.payback_years} years ${plan.payback_months} months`,
+            explanation_text: plan.summary,
+
             user_id: user?.id ?? null,
             user_email: user?.email ?? null,
             status: "success",
@@ -185,14 +273,30 @@ function PlanPage() {
 
 
   function handleLockIn() {
-    if (!planId) return;
+    if (!result) return;
     if (!user) {
+      // Persist plan so it survives the login round-trip (and stays if cancelled).
+      const pending: PendingPlan = {
+        input: {
+          city: form.city,
+          monthly_bill: Number(form.monthly_bill) || 0,
+          generator_hours: Number(form.generator_hours) || 0,
+          property_type: form.property_type,
+          monthly_kwh: form.monthly_kwh ? Number(form.monthly_kwh) : null,
+        },
+        result,
+      };
+      try {
+        window.localStorage.setItem(PENDING_PLAN_KEY, JSON.stringify(pending));
+      } catch { /* ignore quota errors */ }
       toast.info("Please sign in to lock your price", { duration: 4000 });
-      navigate({ to: "/auth", search: { next: `/payment?plan=${planId}` } as never });
+      navigate({ to: "/auth", search: { next: `/plan` } as never });
       return;
     }
+    if (!planId) return;
     navigate({ to: "/payment", search: { plan: planId } as never });
   }
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -335,42 +439,53 @@ function PlanPage() {
               <div className="text-center">
                 <p className="text-sm text-muted-foreground">Recommended system size</p>
                 <p className="mt-2 font-display text-7xl font-bold text-foreground md:text-8xl">
-                  {result.recommended_system_kw}
+                  {result.system_size_kw}
                   <span className="ml-2 text-3xl font-medium text-accent md:text-4xl">kW</span>
                 </p>
               </div>
 
               <div className="mt-10 grid gap-4 md:grid-cols-2">
-                <StatCard icon={Battery} label="Battery capacity" value={result.recommended_battery} />
                 <StatCard
-                  icon={DollarSign}
+                  icon={ResultBatteryIcon}
+                  label="Battery capacity"
+                  value={`${result.battery_capacity_kwh} kWh ${result.battery_chemistry}`}
+                />
+                <StatCard
+                  icon={ResultDollarIcon}
                   label="Est. installation cost"
-                  value={`$${result.estimated_cost_low.toLocaleString()} – $${result.estimated_cost_high.toLocaleString()}`}
+                  value={`$${result.total_installation_cost.toLocaleString()}`}
                 />
                 <StatCard
-                  icon={PanelTop}
+                  icon={ResultPanelIcon}
                   label="Est. panel cost"
-                  value={`$${Math.round(result.estimated_cost_low * 0.7).toLocaleString()} – $${Math.round(result.estimated_cost_high * 0.7).toLocaleString()}`}
+                  value={`$${result.panel_cost.toLocaleString()}`}
                 />
                 <StatCard
-                  icon={BatteryCharging}
+                  icon={ResultChargeIcon}
                   label="Est. battery cost"
-                  value={`$${Math.round(result.estimated_cost_low * 0.3).toLocaleString()} – $${Math.round(result.estimated_cost_high * 0.3).toLocaleString()}`}
+                  value={`$${result.battery_cost.toLocaleString()}`}
                 />
                 <StatCard
-                  icon={TrendingDown}
+                  icon={ResultTrendDownIcon}
                   label="Est. monthly savings"
-                  value={`$${result.estimated_savings.toLocaleString()}/mo`}
+                  value={`$${result.monthly_savings.toLocaleString()}/mo`}
                 />
-                <StatCard icon={Clock} label="Payback period" value={result.payback_period} />
+                <StatCard
+                  icon={ResultClockIcon}
+                  label="Payback period"
+                  value={`${result.payback_years} years ${result.payback_months} months`}
+                />
               </div>
 
               <div className="mt-8 rounded-xl bg-secondary/60 p-5">
                 <p className="text-sm leading-relaxed text-secondary-foreground">
-                  {result.explanation_text}
+                  {result.summary}
                 </p>
               </div>
             </div>
+
+            <TypeAnalyticsPanel result={result} />
+
 
             <div className="rounded-2xl border-2 border-accent bg-card p-6 md:p-8">
               <div className="flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
@@ -385,7 +500,7 @@ function PlanPage() {
                 <Button
                   size="lg"
                   onClick={handleLockIn}
-                  disabled={!planId}
+                  disabled={!result}
                   className="gradient-sun text-deep font-semibold shadow-glow hover:opacity-90 disabled:opacity-50"
                 >
                   <Lock className="mr-2 h-4 w-4" /> Lock In This Price — $25
@@ -414,11 +529,96 @@ function PlanPage() {
 function StatCard({ icon: Icon, label, value }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string }) {
   return (
     <div className="rounded-xl border border-border bg-background p-5">
-      <div className="mb-3 inline-flex h-9 w-9 items-center justify-center rounded-lg bg-secondary">
-        <Icon className="h-4 w-4 text-deep" />
-      </div>
+      <Icon className="mb-3 h-12 w-12" />
       <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
       <p className="mt-1 font-display text-xl font-bold text-foreground">{value}</p>
     </div>
   );
 }
+
+function TypeAnalyticsPanel({ result }: { result: PlanResult }) {
+  const panelIsMono = /mono/i.test(result.recommended_panel_type);
+  const batteryIsLifepo = /lifepo|lfp|iron/i.test(result.recommended_battery_type);
+
+  const panelCompare = [
+    { name: "Monocrystalline", efficiency: 21, recommended: panelIsMono },
+    { name: "Polycrystalline", efficiency: 16, recommended: !panelIsMono },
+  ];
+  const batteryCompare = [
+    { name: "LiFePO₄", lifespan: 6000, recommended: batteryIsLifepo },
+    { name: "Lead-acid", lifespan: 800, recommended: !batteryIsLifepo },
+  ];
+
+  return (
+    <div className="grid gap-6 md:grid-cols-2">
+      <TypeCard
+        badge={<ResultPanelIcon className="h-11 w-11" />}
+        eyebrow="Panel type"
+        title={result.recommended_panel_type}
+        body={result.recommended_panel_reason}
+        rows={panelCompare.map((r) => ({
+          label: r.name,
+          value: `${r.efficiency}% efficiency`,
+          pct: (r.efficiency / 25) * 100,
+          recommended: r.recommended,
+        }))}
+      />
+      <TypeCard
+        badge={<ResultBatteryIcon className="h-11 w-11" />}
+        eyebrow="Battery type"
+        title={result.recommended_battery_type}
+        body={result.recommended_battery_reason}
+        rows={batteryCompare.map((r) => ({
+          label: r.name,
+          value: `${r.lifespan.toLocaleString()} cycles`,
+          pct: (r.lifespan / 6000) * 100,
+          recommended: r.recommended,
+        }))}
+      />
+    </div>
+  );
+}
+
+function TypeCard({
+  badge, eyebrow, title, body, rows,
+}: {
+  badge: React.ReactNode;
+  eyebrow: string;
+  title: string;
+  body: string;
+  rows: { label: string; value: string; pct: number; recommended: boolean }[];
+}) {
+  return (
+    <div className="rounded-2xl border border-accent/40 bg-card p-6 shadow-card md:p-7">
+      <div className="mb-4 flex items-center gap-3">
+        {badge}
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-accent-foreground/70">{eyebrow}</p>
+          <p className="font-display text-lg font-bold text-foreground">{title}</p>
+        </div>
+      </div>
+      <p className="text-sm leading-relaxed text-muted-foreground">{body}</p>
+
+      <div className="mt-5 space-y-3">
+        {rows.map((r) => (
+          <div key={r.label}>
+            <div className="mb-1 flex items-center justify-between text-xs">
+              <span className={r.recommended ? "font-semibold text-foreground" : "text-muted-foreground"}>
+                {r.label}
+                {r.recommended ? <span className="ml-2 rounded-full bg-accent/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-foreground">Recommended</span> : null}
+              </span>
+              <span className="tabular-nums text-muted-foreground">{r.value}</span>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
+              <div
+                className={r.recommended ? "h-full gradient-sun" : "h-full bg-muted-foreground/40"}
+                style={{ width: `${Math.max(6, Math.min(100, r.pct))}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
