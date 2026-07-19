@@ -111,10 +111,12 @@ function AdminPage() {
             <WalkthroughSection />
             <LoginsSection />
             <PlanGenerationsSection />
+            <ContactMessagesSection />
             <ErrorsSection />
             <AuditLogSection />
             <RoleManagementSection />
           </div>
+
         </main>
 
         <SiteFooter />
