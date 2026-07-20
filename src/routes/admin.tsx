@@ -281,7 +281,7 @@ function WalkthroughSection() {
         </p>
         <Button onClick={replay} disabled={busy} className="bg-deep text-deep-foreground hover:bg-deep/90">
           {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-          Replay Sami walkthrough
+          Replay Sami Guide
         </Button>
       </div>
     </Section>
