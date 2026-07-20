@@ -232,9 +232,10 @@ export function PlanWalkthrough() {
           key={current.step}
           src={current.pose}
           alt={`Sami — ${current.title}`}
-          className={`h-[380px] w-auto max-w-[280px] object-contain drop-shadow-2xl select-none transition-opacity duration-300 ${poseVisible ? "opacity-100" : "opacity-0"}`}
+          className={`h-[380px] w-auto max-w-[280px] object-contain select-none transition-opacity duration-300 ${poseVisible ? "opacity-100" : "opacity-0"}`}
           draggable={false}
         />
+
       </div>
 
 
@@ -248,7 +249,7 @@ export function PlanWalkthrough() {
         <img
           src={samiAvatar.url}
           alt="Sami"
-          className="absolute left-3 top-3 h-14 w-14 rounded-full border-2 border-accent object-cover shadow-md md:hidden"
+          className="absolute left-3 top-3 h-14 w-14 rounded-full object-cover md:hidden"
           draggable={false}
         />
 
