@@ -227,15 +227,14 @@ export function PlanWalkthrough() {
         />
       )}
 
-      <div className="pointer-events-none fixed bottom-0 left-1 z-50 md:left-4 animate-in slide-in-from-bottom-8 fade-in duration-500">
+      <div className="pointer-events-none fixed bottom-0 left-4 z-50 hidden md:block animate-in slide-in-from-bottom-8 fade-in duration-500">
         <img
           key={current.step}
           src={current.pose}
           alt={`Sami — ${current.title}`}
-          className={`h-[220px] w-auto drop-shadow-2xl md:h-[380px] select-none transition-opacity duration-300 ${poseVisible ? "opacity-100" : "opacity-0"}`}
+          className={`h-[380px] w-auto max-w-[280px] object-contain drop-shadow-2xl select-none transition-opacity duration-300 ${poseVisible ? "opacity-100" : "opacity-0"}`}
           draggable={false}
         />
-
       </div>
 
 
@@ -243,9 +242,16 @@ export function PlanWalkthrough() {
         role="dialog"
         aria-live="polite"
         aria-label={current.title}
-        className="fixed inset-x-4 bottom-6 z-50 mx-auto max-w-md rounded-2xl border border-accent/50 bg-card p-5 shadow-glow animate-in fade-in slide-in-from-bottom-4 duration-300 md:absolute md:inset-x-auto md:bottom-auto"
+        className="fixed inset-x-4 bottom-6 z-50 mx-auto max-w-md rounded-2xl border border-accent/50 bg-card p-5 pl-20 shadow-glow animate-in fade-in slide-in-from-bottom-4 duration-300 md:absolute md:inset-x-auto md:bottom-auto md:pl-5"
         style={bubbleStyle}
       >
+        <img
+          src={samiAvatar.url}
+          alt="Sami"
+          className="absolute left-3 top-3 h-14 w-14 rounded-full border-2 border-accent object-cover shadow-md md:hidden"
+          draggable={false}
+        />
+
         <button
           type="button"
           onClick={dismiss}
