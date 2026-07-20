@@ -11,7 +11,7 @@ type Props = SVGProps<SVGSVGElement> & { className?: string };
 
 // ---------- Logo / brand mark ----------
 
-export function SolarLebLogo({ className, ...props }: Props) {
+export function SolvoraLBLogo({ className, ...props }: Props) {
   return (
     <svg viewBox="0 0 160 160" className={className} aria-hidden {...props}>
       <circle cx="80" cy="80" r="72" fill="#F5E6D3" />

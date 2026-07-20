@@ -43,9 +43,9 @@ import { logError } from "@/lib/admin";
 export const Route = createFileRoute("/plan")({
   head: () => ({
     meta: [
-      { title: "Get a Free Solar Plan — SolarLeb" },
+      { title: "Get a Free Solar Plan — SolvoraLB" },
       { name: "description", content: "Answer a few quick questions and get an AI-generated solar system recommendation for your Lebanese home or business." },
-      { property: "og:title", content: "Get a Free Solar Plan — SolarLeb" },
+      { property: "og:title", content: "Get a Free Solar Plan — SolvoraLB" },
       { property: "og:description", content: "AI-generated solar recommendations for Lebanon: system size, battery, cost, savings, and payback." },
     ],
   }),
@@ -94,7 +94,7 @@ async function savePlanToDb(pending: PendingPlan, userId: string | null, userEma
     .select("id")
     .single();
   if (error) {
-    console.warn("[SolarLeb] failed to save plan", error);
+    console.warn("[SolvoraLB] failed to save plan", error);
     return null;
   }
   return (data?.id as string) ?? null;
@@ -226,7 +226,7 @@ function PlanPage() {
       setResult(plan);
 
       let savedId: string | null = null;
-      try {
+      if (user) try {
         const { data, error } = await supabase
           .from("plans")
           .insert({
@@ -242,19 +242,28 @@ function PlanPage() {
             estimated_savings: plan.monthly_savings,
             payback_period: `${plan.payback_years} years ${plan.payback_months} months`,
             explanation_text: plan.summary,
-            user_id: user?.id ?? null,
-            user_email: user?.email ?? null,
+            user_id: user.id,
+            user_email: user.email ?? null,
             status: "success",
           })
           .select("id")
           .single();
         if (error) {
-          console.warn("[SolarLeb] failed to save plan", error);
+          console.warn("[SolvoraLB] failed to save plan", error);
         } else if (data?.id) {
           savedId = data.id as string;
         }
       } catch (dbErr) {
-        console.warn("[SolarLeb] plan insert threw", dbErr);
+        console.warn("[SolvoraLB] plan insert threw", dbErr);
+      }
+      if (!user) {
+        try {
+          const pending: PendingPlan = {
+            input,
+            result: plan,
+          };
+          window.localStorage.setItem(PENDING_PLAN_KEY, JSON.stringify(pending));
+        } catch { /* ignore quota errors */ }
       }
       setPlanId(savedId);
 
@@ -263,15 +272,15 @@ function PlanPage() {
       console.error(err);
       const message = err instanceof Error ? err.message : String(err);
       void logError("plan.generate", message, { form });
-      try {
+      if (user) try {
         await supabase.from("plans").insert({
           city: form.city || "unknown",
           monthly_bill: Number(form.monthly_bill) || 0,
           generator_hours: Number(form.generator_hours) || 0,
           property_type: form.property_type || "unknown",
           monthly_kwh: null,
-          user_id: user?.id ?? null,
-          user_email: user?.email ?? null,
+          user_id: user.id,
+          user_email: user.email ?? null,
           status: "failed",
           explanation_text: message.slice(0, 500),
         });
@@ -473,7 +482,7 @@ function PlanPage() {
 
 
         {result && (
-          <div className="mt-10 space-y-6">
+          <div className="mt-10 space-y-6 animate-soft-rise">
             <div className="rounded-2xl border border-accent/40 bg-card p-6 shadow-glow md:p-8">
               <div className="mb-6 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-accent-foreground/70">
                 <Sparkles className="h-4 w-4 text-accent" /> Your recommendation

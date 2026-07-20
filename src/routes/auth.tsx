@@ -18,8 +18,8 @@ export const Route = createFileRoute("/auth")({
   }),
   head: () => ({
     meta: [
-      { title: "Login or Sign Up — SolarLeb" },
-      { name: "description", content: "Sign in to your SolarLeb account to save plans and lock in solar prices." },
+      { title: "Login or Sign Up — SolvoraLB" },
+      { name: "description", content: "Sign in to your SolvoraLB account to save plans and lock in solar prices." },
     ],
   }),
   component: AuthPage,
@@ -45,7 +45,7 @@ function AuthPage() {
           <div className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl gradient-sun shadow-glow">
             <Sun className="h-7 w-7 text-deep" strokeWidth={2.5} />
           </div>
-          <h1 className="font-display text-3xl font-bold text-foreground">Welcome to SolarLeb</h1>
+          <h1 className="font-display text-3xl font-bold text-foreground">Welcome to SolvoraLB</h1>
           <p className="mt-2 text-sm text-muted-foreground">Sign in to save your solar plans.</p>
         </div>
 
@@ -94,7 +94,7 @@ function LoginForm() {
         <Input id="login-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
       </div>
       <Button type="submit" disabled={loading} className="w-full bg-deep text-deep-foreground hover:bg-deep/90">
-        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Log in"}
+        {loading ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Signing in…</>) : "Log in"}
       </Button>
     </form>
   );
@@ -138,7 +138,7 @@ function SignupForm() {
         <p className="text-xs text-muted-foreground">At least 6 characters.</p>
       </div>
       <Button type="submit" disabled={loading} className="w-full bg-deep text-deep-foreground hover:bg-deep/90">
-        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create account"}
+        {loading ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating account…</>) : "Create account"}
       </Button>
     </form>
   );

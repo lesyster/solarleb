@@ -30,7 +30,7 @@ export const Route = createFileRoute("/admin")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Admin — SolarLeb" },
+      { title: "Admin — SolvoraLB" },
       { name: "robots", content: "noindex, nofollow" },
     ],
   }),
@@ -102,10 +102,10 @@ function AdminPage() {
               Admin
             </p>
             <h1 className="mt-1 font-display text-3xl font-bold text-foreground md:text-4xl">
-              SolarLeb control room
+              SolvoraLB control room
             </h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Internal tools for the SolarLeb team.
+              Internal tools for the SolvoraLB team.
             </p>
           </header>
 

@@ -37,7 +37,7 @@ export const Route = createFileRoute("/payment")({
   }),
   head: () => ({
     meta: [
-      { title: "Lock In Your Solar Price — SolarLeb" },
+      { title: "Lock In Your Solar Price — SolvoraLB" },
       { name: "description", content: "Secure today's solar panel and battery prices for 30 days with a $25 deposit, fully credited toward your installation." },
     ],
   }),

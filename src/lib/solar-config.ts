@@ -113,7 +113,7 @@ export async function generatePlan(input: PlanInput): Promise<PlanResult> {
   if (WEBHOOK_URL) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const timeoutId = setTimeout(() => controller.abort(), 45000);
       try {
         const res = await fetch(WEBHOOK_URL, {
           method: "POST",
@@ -126,15 +126,34 @@ export async function generatePlan(input: PlanInput): Promise<PlanResult> {
         });
         if (res.ok) {
           const data = await res.json();
-          if (data && typeof data.system_size_kw === "number") {
-            return data as PlanResult;
+          if (data && typeof data === "object") {
+            // Merge webhook response over local estimate to guarantee all
+            // numeric fields exist (webhook may return partial payloads).
+            const fallback = localEstimate(input);
+            const merged: PlanResult = { ...fallback, ...data };
+            // Coerce any numeric field that came back as string/null.
+            const numKeys: (keyof PlanResult)[] = [
+              "system_size_kw","amps_needed",
+              "panel_watt_each","num_panels","panel_unit_price","panel_total_cost",
+              "battery_ah_each","num_battery_units","battery_unit_price","battery_total_cost",
+              "inverter_total_cost","installation_misc_cost","total_installation_cost",
+              "monthly_savings","payback_years","payback_months",
+            ];
+            for (const k of numKeys) {
+              const v = (merged as any)[k];
+              if (typeof v !== "number" || !isFinite(v)) {
+                const n = Number(v);
+                (merged as any)[k] = isFinite(n) ? n : (fallback as any)[k];
+              }
+            }
+            return merged;
           }
         }
       } finally {
         clearTimeout(timeoutId);
       }
     } catch (err) {
-      console.warn("[SolarLeb] webhook failed, using local estimate", err);
+      console.warn("[SolvoraLB] webhook failed, using local estimate", err);
     }
   }
   return localEstimate(input);

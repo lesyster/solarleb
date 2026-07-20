@@ -10,9 +10,9 @@ import { useAuth } from "@/hooks/use-auth";
 export const Route = createFileRoute("/news")({
   head: () => ({
     meta: [
-      { title: "News & Insights — SolarLeb" },
+      { title: "News & Insights — SolvoraLB" },
       { name: "description", content: "Solar technology, policy, and community stories from across Lebanon." },
-      { property: "og:title", content: "News & Insights — SolarLeb" },
+      { property: "og:title", content: "News & Insights — SolvoraLB" },
       { property: "og:description", content: "Battery tech, government incentives, maintenance tips, and community solar stories." },
     ],
   }),
@@ -99,7 +99,7 @@ function ArticleView({ article, user, onBack }: { article: Article; user: boolea
               <Lock className="mx-auto h-8 w-8 text-muted-foreground" />
               <h3 className="mt-4 font-display text-xl font-bold text-foreground">Sign in to keep reading</h3>
               <p className="mt-2 text-sm text-muted-foreground">
-                Full articles are available to SolarLeb members. It's free to create an account.
+                Full articles are available to SolvoraLB members. It's free to create an account.
               </p>
               <Button asChild className="mt-6 bg-deep text-deep-foreground hover:bg-deep/90">
                 <Link to="/auth">Login or sign up</Link>

@@ -23,7 +23,7 @@ export const Route = createFileRoute("/dashboard")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Dashboard — SolarLeb" },
+      { title: "Dashboard — SolvoraLB" },
       { name: "description", content: "Your saved solar plans and price-lock status." },
     ],
   }),

@@ -8,15 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { supabase } from "@/integrations/supabase/client";
+
+const CONTACT_WEBHOOK_URL = "https://stout-mandate-estrogen.ngrok-free.dev/webhook/contact";
 
 export const Route = createFileRoute("/contact")({
   head: () => ({
     meta: [
-      { title: "Contact — SolarLeb" },
-      { name: "description", content: "Get in touch with the SolarLeb team about solar installation, pricing, or partnerships." },
-      { property: "og:title", content: "Contact — SolarLeb" },
-      { property: "og:description", content: "Reach the SolarLeb team about solar installation, pricing, or partnerships." },
+      { title: "Contact — SolvoraLB" },
+      { name: "description", content: "Get in touch with the SolvoraLB team about solar installation, pricing, or partnerships." },
+      { property: "og:title", content: "Contact — SolvoraLB" },
+      { property: "og:description", content: "Reach the SolvoraLB team about solar installation, pricing, or partnerships." },
     ],
   }),
   component: ContactPage,
@@ -46,15 +47,29 @@ function ContactPage() {
     }
 
     setSubmitting(true);
-    const { error } = await supabase.from("contact_messages").insert({ name, email, message });
-    setSubmitting(false);
+    try {
+      const res = await fetch(CONTACT_WEBHOOK_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "ngrok-skip-browser-warning": "true",
+        },
+        body: JSON.stringify({ name, email, message }),
+      });
 
-    if (error) {
-      console.error(error);
+      if (!res.ok) {
+        throw new Error(`Webhook responded ${res.status}`);
+      }
+
+      toast.success("Message sent — we'll get back to you soon");
+      setForm({ name: "", email: "", message: "" });
+      setDone(true);
+    } catch (err) {
+      console.error(err);
       toast.error("Couldn't send your message. Please try again.");
-      return;
+    } finally {
+      setSubmitting(false);
     }
-    setDone(true);
   }
 
   return (
@@ -71,7 +86,7 @@ function ContactPage() {
             <div className="rounded-2xl border border-border bg-card p-6 shadow-card">
               <EmailIcon className="mb-3 h-12 w-12" />
               <p className="text-xs uppercase tracking-wide text-muted-foreground">Email</p>
-              <p className="mt-1 font-medium text-foreground">SolarLeb@gmail.com</p>
+              <p className="mt-1 font-medium text-foreground">solvoralb@gmail.com</p>
             </div>
             <div className="rounded-2xl border border-border bg-card p-6 shadow-card">
               <LocationIcon className="mb-3 h-12 w-12" />
