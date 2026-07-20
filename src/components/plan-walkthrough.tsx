@@ -249,7 +249,7 @@ export function PlanWalkthrough() {
         <img
           src={samiAvatar.url}
           alt="Sami"
-          className="absolute left-3 top-3 h-14 w-14 rounded-full border-2 border-accent object-cover shadow-md md:hidden"
+          className="absolute left-3 top-3 h-14 w-14 rounded-full object-cover md:hidden"
           draggable={false}
         />
 
