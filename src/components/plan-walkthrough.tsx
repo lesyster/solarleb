@@ -232,9 +232,10 @@ export function PlanWalkthrough() {
           key={current.step}
           src={current.pose}
           alt={`Sami — ${current.title}`}
-          className={`h-[380px] w-auto max-w-[280px] object-contain drop-shadow-2xl select-none transition-opacity duration-300 ${poseVisible ? "opacity-100" : "opacity-0"}`}
+          className={`h-[380px] w-auto max-w-[280px] object-contain select-none transition-opacity duration-300 ${poseVisible ? "opacity-100" : "opacity-0"}`}
           draggable={false}
         />
+
       </div>
 
 
