@@ -9,6 +9,7 @@ import pose3 from "@/assets/sami-pose-3.png.asset.json";
 import pose4 from "@/assets/sami-pose-4.png.asset.json";
 import pose5 from "@/assets/sami-pose-5.png.asset.json";
 import pose6 from "@/assets/sami-pose-6.png.asset.json";
+import samiAvatar from "@/assets/sami-avatar.png.asset.json";
 
 const META_KEY = "plan_walkthrough_seen_v1";
 const LOCAL_KEY = "solarleb.plan_walkthrough_seen";
